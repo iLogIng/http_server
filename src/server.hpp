@@ -1,13 +1,24 @@
+#pragma once
+
+#include <iostream>
 #include <memory>
 #include <boost/asio.hpp>
 #include <boost/beast.hpp>
 
-#include "utils.hpp"
+#include "request_handler.hpp"
 
 namespace beast = boost::beast;
 namespace http = beast::http;
 namespace net = boost::asio;
 using tcp = boost::asio::ip::tcp;
+
+// 错误处理
+void
+fail(beast::error_code ec, char const* what)
+{
+    std::cerr << what << ": " << ec.message() << "\n";
+}
+
 
 // 会话
 // 处理HTTP服务器的连接

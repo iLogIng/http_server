@@ -1,8 +1,13 @@
 #include <boost/beast.hpp>
-
 #include <boost/asio.hpp>
-
 #include <boost/config.hpp>
+
+namespace beast = boost::beast;
+namespace http = beast::http;
+namespace net = boost::asio;
+using tcp = boost::asio::ip::tcp;
+
+// ===========================================
 
 #include <algorithm>
 #include <cstdlib>
@@ -13,39 +18,22 @@
 #include <thread>
 #include <vector>
 
-namespace beast = boost::beast;
-namespace http = beast::http;
-namespace net = boost::asio;
-using tcp = boost::asio::ip::tcp;
-
+#include "logger.hpp"
 #include "server.hpp"
-
-#include "utils.hpp"
-
-#include "request_handler.hpp"
-
-
-//------------------------------------------------------------------------------
-
-// 错误处理
-void
-fail(beast::error_code ec, char const* what)
-{
-    std::cerr << what << ": " << ec.message() << "\n";
-}
-
-
-//------------------------------------------------------------------------------
 
 int main(int argc, char* argv[])
 {
+    server_logger::init_logger("./logs/http_server.log"); // 初始化日志系统
+
+    LOG_INFO << "Starting HTTP server...";
+
     // 检查命令行参数
     if (argc != 5)
     {
         std::cerr <<
-            "Usage: http-server-async <address> <port> <doc_root> <threads>\n" <<
+            "Usage: http_server <address> <port> <doc_root> <threads>\n" <<
             "Example:\n" <<
-            "    http-server-async 0.0.0.0 8080 . 1\n";
+            "    http_server 0.0.0.0 8080 . 1\n";
         return EXIT_FAILURE;
     }
     auto const address = net::ip::make_address(argv[1]);

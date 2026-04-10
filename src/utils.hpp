@@ -1,3 +1,5 @@
+#pragma once
+
 #include <boost/beast.hpp>
 
 namespace beast = boost::beast;
