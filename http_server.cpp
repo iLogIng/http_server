@@ -1,9 +1,6 @@
-#include <boost/beast/core.hpp>
-#include <boost/beast/http.hpp>
-#include <boost/beast/version.hpp>
+#include <boost/beast.hpp>
 
-#include <boost/asio/dispatch.hpp>
-#include <boost/asio/strand.hpp>
+#include <boost/asio.hpp>
 
 #include <boost/config.hpp>
 
@@ -16,10 +13,10 @@
 #include <thread>
 #include <vector>
 
-namespace beast = boost::beast;         // from <boost/beast.hpp>
-namespace http = beast::http;           // from <boost/beast/http.hpp>
-namespace net = boost::asio;            // from <boost/asio.hpp>
-using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
+namespace beast = boost::beast;
+namespace http = beast::http;
+namespace net = boost::asio;
+using tcp = boost::asio::ip::tcp;
 
 // 以文件扩展名为基础返回mime类型
 beast::string_view
@@ -457,7 +454,7 @@ int main(int argc, char* argv[])
         doc_root
     )->run();
 
-    // 在被请求的县城上运行I/O服务
+    // 在被请求的线程上运行I/O服务
     std::vector<std::thread> v;
     v.reserve(threads - 1);
     for(auto i = threads - 1; i > 0; --i)

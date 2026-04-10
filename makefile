@@ -8,6 +8,8 @@ FLAGES = -Wall -g
 http_server: http_server.cpp
 	$(CXX) $(STD_VERSION) $^ -L $(BOOST_LIB) -o $@ -lpthread
 
+test:
+
 # = = = = = = =
 
 .PHONY:
