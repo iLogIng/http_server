@@ -1,5 +1,0 @@
-[2026-04-11 23:21:40.621287] [0x00007f4e812f1780] [debug] test/logger.test.cpp:19 - This is a DEBUG log message with location.
-[2026-04-11 23:21:40.621325] [0x00007f4e812f1780] [info] test/logger.test.cpp:20 - This is an INFO log message with location.
-[2026-04-11 23:21:40.621343] [0x00007f4e812f1780] [warning] test/logger.test.cpp:21 - This is a WARNING log message with location.
-[2026-04-11 23:21:40.621357] [0x00007f4e812f1780] [error] test/logger.test.cpp:22 - This is an ERROR log message with location.
-[2026-04-11 23:21:40.621370] [0x00007f4e812f1780] [fatal] test/logger.test.cpp:23 - This is a FATAL log message with location.

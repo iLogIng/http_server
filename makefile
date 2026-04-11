@@ -18,11 +18,11 @@ SRCS += src/*.hpp
 $(TARGET): $(SRCS)
 	$(CXX) $(CXXFLAGS) $^ -I$(BOOST_INCLUDE_DIR) -L$(BOOST_LIB_DIR) $(BOOST_LIBS_LINK) -o $@
 
-test: test_logger
+test: logger.test
 
-test_logger: src/logger.hpp test/logger.test.cpp
-	$(CXX) $(CXXFLAGS) $^ -I$(BOOST_INCLUDE_DIR) -L$(BOOST_LIB_DIR) $(BOOST_LIBS_LINK) -lgtest -lgtest_main -o ./test/exec/logger_test
-	./test/exec/logger_test
+logger.test: src/logger.hpp test/logger.test.cpp
+	$(CXX) $(CXXFLAGS) $^ -I$(BOOST_INCLUDE_DIR) -L$(BOOST_LIB_DIR) $(BOOST_LIBS_LINK) -lgtest -lgtest_main -o ./test/exec/logger.test
+	./test/exec/logger.test
 
 # = = = = = = =
 
