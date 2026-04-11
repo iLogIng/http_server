@@ -8,7 +8,7 @@ CXXFLAGS = ${STD_VERSION} -DBOOST_LOG_DYN_LINK -Wall -Wextra -g
 BOOST_INCLUDE_DIR = /usr/include
 BOOST_LIB_DIR = /usr/lib
 
-BOOST_LIBS_LINK = -lboost_system -lboost_thread -lboost_log -lboost_log_setup -lpthread
+BOOST_LIBS_LINK = -lboost_system -lboost_filesystem -lboost_thread -lboost_log -lboost_log_setup -lpthread
 
 TARGET = http_server
 
@@ -19,6 +19,7 @@ $(TARGET): $(SRCS)
 	$(CXX) $(CXXFLAGS) $^ -I$(BOOST_INCLUDE_DIR) -L$(BOOST_LIB_DIR) $(BOOST_LIBS_LINK) -o $@
 
 test:
+	@echo "还未编写测试用例"
 
 # = = = = = = =
 

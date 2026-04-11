@@ -30,6 +30,7 @@ int main(int argc, char* argv[])
     // 检查命令行参数
     if (argc != 5)
     {
+        LOG_FATAL_LOC << "Invalid command line arguments";
         std::cerr <<
             "Usage: http_server <address> <port> <doc_root> <threads>\n" <<
             "Example:\n" <<

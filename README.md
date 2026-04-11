@@ -20,6 +20,7 @@
 - **Boost**
     - **Asio**
     - **Beast**
+    - **Filesystem**
     - **Log**
 
 ## 功能特性 Features
@@ -31,7 +32,7 @@
 
 - ***/***
   - ***src/***
-    - **logger.hpp**
+    - **[logger.hpp](./docs/logger.md)**
       > 日志类封装
       >
     - **server.hpp**
@@ -76,7 +77,10 @@
 >
 
 **构建可执行文件**
+
 ```bash
+$ make http_server
+# 或
 $ make
 ```
 
