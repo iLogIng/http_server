@@ -18,8 +18,11 @@ SRCS += src/*.hpp
 $(TARGET): $(SRCS)
 	$(CXX) $(CXXFLAGS) $^ -I$(BOOST_INCLUDE_DIR) -L$(BOOST_LIB_DIR) $(BOOST_LIBS_LINK) -o $@
 
-test:
-	@echo "还未编写测试用例"
+test: test_logger
+
+test_logger: src/logger.hpp test/logger.test.cpp
+	$(CXX) $(CXXFLAGS) $^ -I$(BOOST_INCLUDE_DIR) -L$(BOOST_LIB_DIR) $(BOOST_LIBS_LINK) -lgtest -lgtest_main -o ./test/exec/logger_test
+	./test/exec/logger_test
 
 # = = = = = = =
 
@@ -32,6 +35,8 @@ execute:
 	./http_server 0.0.0.0 8080 . 1;
 	
 
-clean:
+clean: clean-test
 	rm http_server
 
+clean-test:
+	rm ./test/exec/logger_test

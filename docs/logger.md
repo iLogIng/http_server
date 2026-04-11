@@ -7,7 +7,7 @@
 > 基于 ***Boost::Log*** 库
 >
 
-为该http-server项目提供日志处理能力。
+为该 http_server 项目提供日志处理能力。
 
 将日志信息存放在 `/logs` 目录下
 

@@ -16,7 +16,8 @@
 #include <iostream>
 #include <fstream>
 
-namespace server_logger {
+namespace server_logger
+{
     namespace logging = boost::log;
     namespace trivial = boost::log::trivial;
     namespace sinks = boost::log::sinks;
