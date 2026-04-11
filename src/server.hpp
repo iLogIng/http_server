@@ -5,6 +5,7 @@
 #include <boost/asio.hpp>
 #include <boost/beast.hpp>
 
+#include "logger.hpp"
 #include "request_handler.hpp"
 
 namespace beast = boost::beast;
@@ -16,7 +17,7 @@ using tcp = boost::asio::ip::tcp;
 void
 fail(beast::error_code ec, char const* what)
 {
-    std::cerr << what << ": " << ec.message() << "\n";
+    LOG_ERROR << what << ": " << ec.message() << "\n";
 }
 
 
