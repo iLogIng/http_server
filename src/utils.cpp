@@ -92,42 +92,26 @@ path_cat(
     std::string result(base);
 // MSVC 编译器
 #ifdef BOOST_MSVC
-    if(is_safe_path(path))
+    char constexpr path_separator = '\\';
+    if(result.back() == path_separator)
     {
-        char constexpr path_separator = '\\';
-        if(result.back() == path_separator)
-        {
-            result.resize(result.size() - 1);
-        }
-        result.append(path.data(), path.size());
-        for(auto& c : result)
-        {
-            if(c == '/')
-            {
-                c = path_separator;
-            }
-        }
+        result.resize(result.size() - 1);
     }
-    else
+    result.append(path.data(), path.size());
+    for(auto& c : result)
     {
-        LOG_ERROR << "Unsafe path detected: '" << path << "'";
-        // throw std::runtime_error("Unsafe path detected");
+        if(c == '/')
+        {
+            c = path_separator;
+        }
     }
 #else
-    if(is_safe_path(path))
+    char constexpr path_separator = '/';
+    if(result.back() == path_separator)
     {
-        char constexpr path_separator = '/';
-        if(result.back() == path_separator)
-        {
-            result.resize(result.size() - 1);
-        }
-        result.append(path.data(), path.size());
+        result.resize(result.size() - 1);
     }
-    else
-    {
-        LOG_ERROR << "Unsafe path detected: '" << path << "'";
-        // throw std::runtime_error("Unsafe path detected");
-    }
+    result.append(path.data(), path.size());
 #endif
     return result;
 }

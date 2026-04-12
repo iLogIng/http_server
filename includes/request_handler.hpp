@@ -19,15 +19,14 @@ handle_request(
     beast::string_view doc_root,
     http::request<Body, http::basic_fields<Allocator>>&& req)
 {
-    // 确保我们处理了事务
+    // 请求方法必须是 GET 或 HEAD
+    // 否则，返回 400 Bad Request 响应
     if( req.method() != http::verb::get &&
         req.method() != http::verb::head)
         return make_bad_request(req, "Unknown HTTP-method");
 
-    // 请求路径必须是相对于文件根目录的绝对路径，并且不能包含 ".." 进行文件递归查找
-    if( req.target().empty() ||
-        req.target()[0] != '/' ||
-        req.target().find("..") != beast::string_view::npos)
+    // 保证请求路径合法，防止路径遍历攻击
+    if(!is_safe_path(req.target()))
         return make_bad_request(req, "Illegal request-target");
 
     // 生成一个指向被请求文件（资源）的路径
@@ -40,11 +39,11 @@ handle_request(
     http::file_body::value_type body;
     body.open(path.c_str(), beast::file_mode::scan, ec);
 
-    // 处理文件不存在的情况
+    // 404 Not Found
     if(ec == beast::errc::no_such_file_or_directory)
         return make_not_found(req, req.target());
 
-    // 处理未知错误
+    // 500 Internal Server Error
     if(ec)
         return make_server_error(req, ec.message());
 
