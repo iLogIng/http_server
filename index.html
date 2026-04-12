@@ -1,11 +1,366 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Test Page</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>静态服务器 · 连通性测试</title>
+  <style>
+    /* 干净、现代的重置与基调 */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: linear-gradient(145deg, #f4f6fa 0%, #eef0f3 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+      padding: 1.5rem;
+      margin: 0;
+      color: #1e293b;
+    }
+
+    .test-card {
+      max-width: 680px;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      background: #ffffffec;
+      border-radius: 36px;
+      box-shadow: 
+        0 20px 35px -8px rgba(0, 0, 0, 0.12),
+        0 5px 12px -4px rgba(0, 0, 0, 0.05),
+        inset 0 1px 0 #ffffffcc;
+      border: 1px solid #ffffff70;
+      padding: 2.2rem 2rem 2rem;
+      transition: all 0.2s ease;
+    }
+
+    /* 状态头部 */
+    .status-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 1.8rem;
+      border-bottom: 2px dashed #cbd5e1;
+      padding-bottom: 1.4rem;
+    }
+
+    .pulse-dot {
+      width: 14px;
+      height: 14px;
+      background: #10b981;
+      border-radius: 50%;
+      box-shadow: 0 0 0 0 #10b98180;
+      animation: pulse-green 1.8s infinite;
+    }
+
+    @keyframes pulse-green {
+      0% { box-shadow: 0 0 0 0 #10b98160; }
+      70% { box-shadow: 0 0 0 10px #10b98100; }
+      100% { box-shadow: 0 0 0 0 #10b98100; }
+    }
+
+    .status-header h1 {
+      font-size: 1.9rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: #0f172a;
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      background: #e2e8f0;
+      font-size: 0.8rem;
+      font-weight: 500;
+      padding: 0.2rem 0.7rem;
+      border-radius: 30px;
+      color: #334155;
+      margin-left: 8px;
+      border: 1px solid #cbd5e180;
+    }
+
+    .greeting {
+      font-size: 1rem;
+      color: #475569;
+      margin-top: 0.25rem;
+      margin-bottom: 1.8rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #f1f5f9;
+      padding: 0.75rem 1.2rem;
+      border-radius: 60px;
+      width: fit-content;
+      border: 1px solid #e2e8f0;
+    }
+
+    .greeting span {
+      font-weight: 500;
+    }
+
+    /* 链接卡片区域 */
+    .links-section {
+      display: flex;
+      flex-direction: column;
+      gap: 1.2rem;
+      margin: 1.8rem 0 2rem;
+    }
+
+    /* 可跳转卡片 —— 整个卡片都是链接 */
+    .link-card {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: #ffffff;
+      padding: 1.2rem 1.5rem;
+      border-radius: 24px;
+      text-decoration: none;
+      color: #0f172a;
+      border: 1.5px solid #e2e8f0;
+      box-shadow: 0 6px 12px -6px #0f172a0d;
+      transition: all 0.25s cubic-bezier(0.2, 0, 0, 1);
+      backdrop-filter: blur(4px);
+      cursor: pointer;
+    }
+
+    .link-card:hover {
+      border-color: #94a3b8;
+      background: #fafcff;
+      box-shadow: 0 18px 25px -12px #1e293b1a, 0 4px 8px -2px #00000008;
+      transform: translateY(-2px);
+    }
+
+    .link-card:focus-visible {
+      outline: 3px solid #2563eb;
+      outline-offset: 2px;
+    }
+
+    /* 图标区域 */
+    .link-icon {
+      font-size: 2.5rem;
+      line-height: 1;
+      width: 52px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f8fafc;
+      border-radius: 18px;
+      box-shadow: inset 0 1px 3px #00000008, 0 2px 4px #00000005;
+      border: 1px solid #e9eef4;
+    }
+
+    .link-content {
+      flex: 1;
+    }
+
+    .link-title {
+      font-weight: 650;
+      font-size: 1.25rem;
+      letter-spacing: -0.01em;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .link-url {
+      font-size: 0.9rem;
+      color: #64748b;
+      font-family: 'SF Mono', 'Menlo', 'Monaco', 'Cascadia Code', 'Consolas', monospace;
+      background: #f1f5f9;
+      padding: 0.2rem 0.8rem;
+      border-radius: 40px;
+      display: inline-block;
+      border: 1px solid #dee6ed;
+      word-break: break-all;
+    }
+
+    .arrow-indicator {
+      font-size: 1.6rem;
+      color: #64748b;
+      transition: transform 0.2s;
+      opacity: 0.7;
+    }
+
+    .link-card:hover .arrow-indicator {
+      transform: translateX(5px);
+      color: #2563eb;
+      opacity: 1;
+    }
+
+    /* 针对第二个卡片稍作区分 (可选) */
+    .link-card:last-child .link-icon {
+      background: #eef2ff;
+    }
+
+    /* 提示行 */
+    .hint {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.9rem;
+      color: #64748b;
+      margin-top: 0.5rem;
+      padding-left: 0.3rem;
+    }
+
+    .hint i {
+      font-style: normal;
+      font-size: 1.2rem;
+    }
+
+    /* 页脚 */
+    .footer-note {
+      margin-top: 2rem;
+      text-align: center;
+      color: #64748b;
+      font-size: 0.85rem;
+      border-top: 1px solid #dce3ec;
+      padding-top: 1.5rem;
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+
+    .footer-note a {
+      color: #3b82f6;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .footer-note a:hover {
+      text-decoration: underline;
+    }
+
+    /* 小屏适配 */
+    @media (max-width: 480px) {
+      .test-card {
+        padding: 1.8rem 1.2rem;
+        border-radius: 28px;
+      }
+      .status-header h1 {
+        font-size: 1.6rem;
+      }
+      .link-card {
+        padding: 1rem 1.2rem;
+        gap: 12px;
+      }
+      .link-icon {
+        width: 44px;
+        height: 44px;
+        font-size: 2rem;
+        border-radius: 14px;
+      }
+      .link-title {
+        font-size: 1.1rem;
+      }
+    }
+
+    /* 装饰性分隔 */
+    .server-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+  </style>
 </head>
 <body>
-    <h1 style = "color:#66ccff">Hello World!</h1>
+  <div class="test-card">
+    
+    <!-- 头部：状态 + 标题 -->
+    <div class="status-header">
+      <div class="pulse-dot"></div>
+      <h1>
+        静态服务器测试
+        <span class="badge">online</span>
+      </h1>
+    </div>
+    
+    <!-- 友好提示：服务器正常 -->
+    <div class="greeting">
+      <span>✅</span> 
+      <span>静态资源服务运行中 · 以下链接用于验证跳转</span>
+    </div>
+
+    <!-- 核心：两个跳转链接 (完全符合需求) -->
+    <div class="links-section">
+      
+      <!-- 链接 1: github.com/iLogIng -->
+      <a class="link-card" 
+         href="https://github.com/iLogIng" 
+         target="_blank" 
+         rel="noopener noreferrer">
+        <div class="link-icon">
+          🐙
+        </div>
+        <div class="link-content">
+          <div class="link-title">
+            GitHub · iLogIng
+          </div>
+          <span class="link-url">github.com/iLogIng</span>
+        </div>
+        <div class="arrow-indicator">
+          ↗
+        </div>
+      </a>
+      
+      <!-- 链接 2: iloging.github.io -->
+      <a class="link-card" 
+         href="https://iloging.github.io" 
+         target="_blank" 
+         rel="noopener noreferrer">
+        <div class="link-icon">
+          🌐
+        </div>
+        <div class="link-content">
+          <div class="link-title">
+            iLogIng · 个人站点
+          </div>
+          <span class="link-url">iloging.github.io</span>
+        </div>
+        <div class="arrow-indicator">
+          ↗
+        </div>
+      </a>
+    </div>
+
+    <!-- 额外的小提示 (强调新窗口打开) -->
+    <div class="hint">
+      <i>🔗</i> 
+      <span>点击卡片即在新标签页打开链接 · 测试静态服务器跳转能力</span>
+    </div>
+
+    <!-- 底部：简洁信息 & 再次确认两个地址 (也满足跳转内容可见) -->
+    <div class="footer-note">
+      <span>🔹 <a href="https://github.com/iLogIng" target="_blank" rel="noopener noreferrer">github.com/iLogIng</a></span>
+      <span>🔸 <a href="https://iloging.github.io" target="_blank" rel="noopener noreferrer">iloging.github.io</a></span>
+      <span style="color:#94a3b8;">| 测试页 v1.0</span>
+    </div>
+
+    <!-- 隐性的服务器测试说明 (文字清晰可见) -->
+    <div style="margin-top: 12px; font-size: 0.75rem; color: #94a3b8; text-align: right; opacity: 0.7;">
+      index.html · 静态资源就绪
+    </div>
+  </div>
+
+  <!-- 极简脚本: 仅用于控制台友好提示 (不影响跳转核心功能) -->
+  <script>
+    (function() {
+      // 纯粹为了测试服务器时在控制台留下友好标记，无任何跳转干扰
+      console.log('🧪 静态服务器测试页 | 链接: github.com/iLogIng , iloging.github.io');
+      console.log('✅ 页面已加载 — 如果看到此信息，说明静态服务器正常提供 index.html');
+    })();
+  </script>
 </body>
 </html>
