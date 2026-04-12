@@ -2,7 +2,7 @@
 
 #include <boost/beast.hpp>
 
-namespace http_utils
+namespace server_utils
 {
 
 namespace beast = boost::beast;
