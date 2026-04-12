@@ -1,9 +1,7 @@
-
 CXX = g++
 STD_VERSION = -std=c++17
 
 CXXFLAGS = ${STD_VERSION} -DBOOST_LOG_DYN_LINK -Wall -Wextra -g
-#BOOST_LIB = -lboost_log -lboost_log_setup -lboost_system -lboost_thread -lboost_filesystem -lpthread
 
 BOOST_INCLUDE_DIR = /usr/include
 BOOST_LIB_DIR = /usr/lib
@@ -12,10 +10,10 @@ BOOST_LIBS_LINK = -lboost_system -lboost_filesystem -lboost_thread -lboost_log -
 
 TARGET = http_server
 
-SRCS = src/main.cpp
-SRCS += src/*.hpp
+SRCS = src/*.cpp
+INCLUDES = includes/*.hpp
 
-$(TARGET): $(SRCS)
+$(TARGET): $(INCLUDES) $(SRCS)
 	$(CXX) $(CXXFLAGS) $^ -I$(BOOST_INCLUDE_DIR) -L$(BOOST_LIB_DIR) $(BOOST_LIBS_LINK) -o $@
 
 test: logger.test

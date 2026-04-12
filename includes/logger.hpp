@@ -39,6 +39,7 @@ namespace server_logger
  */
 inline logging::sources::severity_logger<trivial::severity_level>&
 get_logger() {
+    using namespace server_logger;
     static logging::sources::severity_logger<trivial::severity_level> logger;
     return logger;
 }
@@ -48,8 +49,11 @@ get_logger() {
  * 应该在程序入口处调用一次，以确保日志系统正确配置。
  * @param log_file日志文件路径，默认为 "./logs/http_server.log"
  */
-inline void init_logger(const std::string& log_file = "./logs/http_server.log") {
+inline void
+init_logger(const std::string& log_file = "./logs/http_server.log") {
+    using namespace server_logger;
     // 确保日志目录存在
+    // 目前是写死的状态，后续可以通过配置文件或环境变量进行调整，以适应不同的部署环境和需求
     boost::filesystem::path log_dir("./logs");
     if (!boost::filesystem::exists(log_dir))
     {

@@ -7,6 +7,8 @@
 namespace beast = boost::beast;
 namespace http = beast::http;
 
+using namespace http_utils;
+
 // 针对不同的请求返回响应
 //
 // 正确的响应信息（依赖于请求信息的状况）

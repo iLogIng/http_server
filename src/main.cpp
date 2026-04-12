@@ -18,8 +18,8 @@ using tcp = boost::asio::ip::tcp;
 #include <thread>
 #include <vector>
 
-#include "logger.hpp"
-#include "server.hpp"
+#include "../includes/config.hpp"
+#include "../includes/server.hpp"
 
 int main(int argc, char* argv[])
 {

@@ -1,12 +1,12 @@
-#pragma once
-
-#include <boost/beast.hpp>
+#include "../includes/utils.hpp"
 
 namespace beast = boost::beast;
 
 // 以文件扩展名为基础返回mime类型
+// 目前是写死的状态，后续可以通过配置文件或环境变量进行调整，以适应不同的部署环境和需求
+// 预计通过集成JSON配置文件来实现更灵活的mime类型映射，以便用户可以根据需要添加或修改mime类型，而无需修改代码
 beast::string_view
-mime_type(beast::string_view path)
+http_utils::mime_type(beast::string_view path)
 {
     using beast::iequals;
     auto const ext = [&path]
@@ -42,7 +42,7 @@ mime_type(beast::string_view path)
 
 // 安全的文件路径连接方法，返回该平台支持的路径字符串
 std::string
-path_cat(
+http_utils::path_cat(
     beast::string_view base,
     beast::string_view path)
 {
@@ -76,4 +76,3 @@ path_cat(
 #endif
     return result;
 }
-
