@@ -24,23 +24,14 @@ using tcp = boost::asio::ip::tcp;
 int main(int argc, char* argv[])
 {
     server_logger::init_logger("./logs/http_server.log"); // 初始化日志系统
+    server_config::configuration config(argc, argv); // 加载配置
 
     LOG_INFO << "Starting HTTP server...";
 
-    // 检查命令行参数
-    if (argc != 5)
-    {
-        LOG_FATAL_LOC <<
-            "Invalid Command Line Arguments\n" <<
-            "Usage: http_server <address> <port> <doc_root> <threads>\n" <<
-            "Example:\n" <<
-            "    http_server 0.0.0.0 8080 . 1\n";
-        return EXIT_FAILURE;
-    }
-    auto const address = net::ip::make_address(argv[1]);
-    auto const port = static_cast<unsigned short>(std::atoi(argv[2]));
-    auto const doc_root = std::make_shared<std::string>(argv[3]);
-    auto const threads = std::max<int>(1, std::atoi(argv[4]));
+    auto const address = net::ip::make_address(config.address());
+    auto const port = config.port();
+    auto const doc_root = std::make_shared<std::string>(config.doc_root());
+    auto const threads = std::max<int>(1, static_cast<int>(config.threads()));
 
     // 异步上下文是运行以下所有I/O程序的基础
     net::io_context ioc{threads};
@@ -56,11 +47,13 @@ int main(int argc, char* argv[])
     std::vector<std::thread> v;
     v.reserve(threads - 1);
     for(auto i = threads - 1; i > 0; --i)
+    {
         v.emplace_back(
         [&ioc]
         {
             ioc.run();
         });
+    }
     ioc.run();
 
     return EXIT_SUCCESS;
