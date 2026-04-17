@@ -16,6 +16,8 @@
 
 Config 模块的核心任务是：接收不同来源的原始配置，经过解析和优先级合并，最终输出一个验证过的 ServerConfig 对象。
 
+就目前的设计，对于Config的读取，采取覆盖式的更新处理。
+
 ## 结构
 
 所有定义都包含在 ***namespace server_config*** 命名空间
@@ -35,9 +37,6 @@ struct config_values
     unsigned int        threads_ = 1;
     unsigned int        timeout_seconds_ = 30;
     size_t              max_body_size_ = 1 << 20;
-
-    bool validate() const;
-
 };
 ```
 
@@ -48,6 +47,8 @@ struct config_values
 提供 **`load_config(int argc, int *argv[])`** 方法加载配置
 
 仅提供 **`configuration(int argc, int *argv[])`** 构造函数，通过调用 **`load_config`** 加载配置
+  - 依赖 **`apply_json_config`** 方法加载json文件配置
+  - 依赖 **`apply_command_line`** 方法加载命令行配置
 
 提供针对 **`config_values`** 结构体中各个数据成员的getter方法
 

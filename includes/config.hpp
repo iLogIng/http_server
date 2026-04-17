@@ -4,7 +4,6 @@
 #include <boost/json.hpp>
 
 #include <fstream>
-#include <stdlib.h>
 #include <string>
 
 // 服务器配置参数
@@ -25,22 +24,37 @@ struct config_values
     unsigned int        timeout_seconds_ = 30;
     size_t              max_body_size_ = 1 << 20;
 
-    // 验证配置参数是否合法
-    bool validate() const;
-
 };
+
+bool
+valid_address(std::string &addr);
+
+bool
+valid_port(uint64_t port);
+
+bool
+valid_doc_root(std::string &path);
+
+bool
+valid_threads(uint64_t count);
+
+bool
+valid_timeout_seconds(uint64_t timeout_second);
+
+bool
+valid_max_body_size(uint64_t max_body_size);
 
 // 配置类
 // 命令行参数 > 配置文件 > 默认值 逐层覆盖
 class configuration
 {
 public:
-    // 从命令行参数解析配置
-    // 1. load_defaults()
-    // 2. parse_json_config()
-    // 3. parse_command_line()
-    // 在 merge_configs() 中进行汇总合并
-    // 由 load_config() 统一覆盖到 config_vals_ 中
+    // 采用优先级覆盖的方法处理传入/配置的参数
+    //      我认为关于json的解析可以承接该部分的设计
+    // p1. command line
+    // p2. json config
+    // p3. default value
+    // 所以最终的配置可能是以上三种杂合的结果，需要编写配置回显功能
     explicit configuration(int argc, char *argv[]);
 
     // 删除拷贝和移动构造，仅使用 arc argv 构造函数
@@ -61,23 +75,17 @@ public:
     const unsigned int &timeout_seconds() const;
     const size_t &max_body_size() const;
 
+    void dump() const;
+
 private:
 
-    // 加载 默认配置
-    static config_values load_defaults();
-    // 从 json配置文件 解析配置
-    static config_values parse_json_config(const std::string& path);
-    // 从 命令行参数 解析配置
-    static config_values parse_command_line(int argc, char *argv[]);
-
-    // 覆盖配置值
-    static void merge_configs(config_values& base, const config_values& overrides);
-
-public:
-    // 加载配置
-    static config_values load_config(int argc, char *argv[]);
+    // 应用 命令行参数
+    void apply_command_line(int argc, char *argv[]);
+    // 应用 json配置文件
+    void apply_json_config(std::string path);
 
 };
+
 
 } // namespace config
 

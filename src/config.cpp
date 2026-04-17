@@ -27,92 +27,54 @@ max_body_size() const
 { return config_vals_.max_body_size_; }
 
 bool
-server_config::config_values::
-validate() const
+server_config::valid_address(std::string &addr)
 {
-    if(address_.empty()) {
-        LOG_ERROR << "Address cannot be empty";
-        return false;
-    }
-    if (port_ == 0) {
-        LOG_ERROR << "Invalid port number: " << port_;
-        return false;
-    }
-    if (threads_ == 0) {
-        LOG_ERROR << "Number of threads must be greater than 0";
-        return false;
-    }
-    if (timeout_seconds_ == 0) {
-        LOG_ERROR << "Timeout seconds must be greater than 0";
-        return false;
-    }
-    if (max_body_size_ == 0) {
-        LOG_ERROR << "Max body size must be greater than 0";
-        return false;
-    }
-    return true;
+    return !addr.empty();
 }
 
-server_config::config_values server_config::configuration::
-load_defaults()
+bool
+server_config::valid_port(uint64_t port)
 {
-    return config_values{};
+    return port > 0 && port <= 65535;
 }
 
-server_config::config_values server_config::configuration::
-parse_json_config(const std::string& path)
+bool
+server_config::valid_doc_root(std::string &path)
 {
-    std::ifstream ifs(path);
-    if (!ifs) {
-        LOG_ERROR << "Failed to open config file: " << path;
-        throw std::runtime_error("Failed to open config file");
-    }
-    
-    std::stringstream buffer;
-    buffer << ifs.rdbuf();
-    auto json_values = json::parse(buffer.str()).as_object();
-
-    // 使用 lambda 封装查找逻辑，避免重复查找和临时对象悬挂
-    auto get_string = [&](const char* key, const char* default_val) ->
-    std::string {
-        if (auto val = json_values.if_contains(key); val && val->is_string())
-        {
-            return std::string(val->as_string());
-        }
-        return default_val;
-    };
-
-    auto get_uint = [&](const char* key, uint64_t default_val) ->
-    uint64_t {
-        if (auto val = json_values.if_contains(key); val && val->is_number())
-        {
-            return val->as_uint64();
-        }
-        return default_val;
-    };
-
-    return {
-        /*address*/             get_string("address", "0.0.0.0"),
-        /*port*/                static_cast<unsigned short>(get_uint("port", 8080)),
-        /*doc_root*/            get_string("doc_root", "."),
-        /*threads*/             static_cast<unsigned int>(get_uint("threads", 1)),
-        /*timeout_seconds*/     static_cast<unsigned int>(get_uint("timeout_seconds", 30)),
-        /*max_body_size*/       static_cast<std::size_t>(get_uint("max_body_size", 1 << 20))
-    };
+    return !path.empty();
 }
 
-server_config::config_values server_config::configuration::
-parse_command_line(int argc, char *argv[])
+bool
+server_config::valid_threads(uint64_t count)
+{
+    return count > 0 && count <= boost::thread::hardware_concurrency() * 2;
+}
+
+bool
+server_config::valid_timeout_seconds(uint64_t timeout_second)
+{
+    return timeout_second > 0;
+}
+
+bool
+server_config::valid_max_body_size(uint64_t max_body_size)
+{
+    return max_body_size > 0;
+}
+
+// 采用直接覆盖方案进行命令行参数的传入
+void server_config::configuration::
+apply_command_line(int argc, char *argv[])
 {
     prog_opts::options_description desc("Allowed options");
     desc.add_options()
         ("help,h",              "Show help message")
-        ("address,a", prog_opts::value<std::string>()->default_value("0.0.0.0"), "Server address (default: 0.0.0.0)")
-        ("port,p", prog_opts::value<unsigned short>()->default_value(8080), "Server port (default: 8080)")
-        ("doc_root,r", prog_opts::value<std::string>()->default_value("."), "Document root (default: .)")
-        ("threads,t", prog_opts::value<unsigned int>()->default_value(1), "Number of threads (default: 1)")
-        ("timeout_seconds,s", prog_opts::value<unsigned int>()->default_value(30), "Timeout in seconds (default: 30)")
-        ("max_body_size,b", prog_opts::value<size_t>()->default_value(1048576), "Maximum body size (default: 1048576 (1MB))");
+        ("address,a", prog_opts::value<std::string>(), "Server address")
+        ("port,p", prog_opts::value<unsigned short>(), "Server port")
+        ("doc_root,r", prog_opts::value<std::string>(), "Document root")
+        ("threads,t", prog_opts::value<unsigned int>(), "Number of threads")
+        ("timeout_seconds,s", prog_opts::value<unsigned int>(), "Timeout in seconds")
+        ("max_body_size,b", prog_opts::value<size_t>(), "Maximum body size");
 
     prog_opts::variables_map vm;
     try {
@@ -128,62 +90,126 @@ parse_command_line(int argc, char *argv[])
         LOG_FATAL << "Help requested, exiting.";
         std::exit(EXIT_SUCCESS);
     }
+    
+    if(vm.count("address"))
+        this->config_vals_.address_ = vm["address"].as<std::string>();
+    if(vm.count("port"))
+        this->config_vals_.port_ = vm["port"].as<unsigned short>();
+    if(vm.count("doc_root"))
+        this->config_vals_.doc_root_ = vm["doc_root"].as<std::string>();
+    if(vm.count("threads"))
+        this->config_vals_.threads_ = vm["threads"].as<unsigned short>();
+    if(vm.count("timeout_second"))
+        this->config_vals_.timeout_seconds_ = vm["timeout_seconds"].as<unsigned short>();
+    if(vm.count("max_body_size"))
+        this->config_vals_.max_body_size_ = vm["max_body_size"].as<size_t>();
 
-    return {
-        /*address*/             vm["address"].as<std::string>(),
-        /*port*/                static_cast<unsigned short>(vm["port"].as<unsigned short>()),
-        /*doc_root*/            vm["doc_root"].as<std::string>(),
-        /*threads*/             static_cast<unsigned int>(vm["threads"].as<unsigned int>()),
-        /*timeout_seconds*/     static_cast<unsigned int>(vm["timeout_seconds"].as<unsigned int>()),
-        /*max_body_size*/       static_cast<std::size_t>(vm["max_body_size"].as<std::size_t>())
+}
+
+void
+server_config::configuration::
+apply_json_config(std::string path)
+{
+    std::ifstream ifs(path);
+    if (!ifs) {
+        LOG_ERROR << "Failed to open config file: " << path;
+        throw std::runtime_error("Failed to open config file");
+    }
+    
+    std::stringstream buffer;
+    buffer << ifs.rdbuf();
+    auto json_values = json::parse(buffer.str()).as_object();
+
+    auto load_string_type_val =
+    [&](const char *key) -> std::string {
+        if (json_values.contains(key) && json_values.at(key).is_string()) {
+            return std::string(json_values.at(key).as_string());
+        }
     };
-}
 
-void server_config::configuration::
-merge_configs(
-    server_config::config_values& base,
-    const server_config::config_values& overrides)
-{
-    if(!overrides.validate()) {
-        LOG_ERROR << "Invalid configuration overrides, skipping this merge step.";
-        throw std::runtime_error("Invalid configuration overrides");
-        return;
-    }
-    base.address_ = overrides.address_;
-    base.port_ = overrides.port_;
-    base.doc_root_ = overrides.doc_root_;
-    base.threads_ = overrides.threads_;
-    base.timeout_seconds_ = overrides.timeout_seconds_;
-    base.max_body_size_ = overrides.max_body_size_;
-}
+#if 0
+    auto load_uint64_type_val =
+    [&](const char *key) -> uint64_t {
+        if (json_values.contains(key) && json_values.at(key).is_number()) {
+            return json_values.at(key).as_uint64();
+        }
+    };
+#endif
 
-server_config::config_values server_config::configuration::
-load_config(int argc, char *argv[])
-{
-    auto cfg_vals = load_defaults();
+    this->config_vals_.address_ = load_string_type_val("address");
+    this->config_vals_.doc_root_ = load_string_type_val("doc_root");
 
-    try {
-        auto json_config = parse_json_config("config.json");
-        merge_configs(cfg_vals, json_config);
-    } catch (const std::exception& e) {
-        LOG_WARNING << "Failed to load config file: " << e.what() << ". Using defaults.";
+    if (json_values.contains("port") && json_values.at("port").is_number()) {
+        auto port_val = json_values.at("port").as_int64();
+        if(valid_port(port_val)) {
+            this->config_vals_.port_ = static_cast<unsigned short>(port_val);
+        }
+        else {
+            LOG_WARNING << "Invalid port in JSON:" << port_val;
+        }
     }
 
-    try {
-        auto cmd_config = parse_command_line(argc, argv);
-        merge_configs(cfg_vals, cmd_config);
-    } catch (const std::exception& e) {
-        LOG_ERROR << "Failed to parse command line: " << e.what();
-        throw std::runtime_error("Failed to parse command line");
+    if (json_values.contains("threads") && json_values.at("threads").is_number()) {
+        auto thrd_val = json_values.at("threads").as_int64();
+        if(valid_threads(thrd_val)) {
+            this->config_vals_.threads_ = static_cast<unsigned int>(thrd_val);
+        }
+        else {
+            LOG_WARNING << "Invalid threads count in JSON:" << thrd_val;
+        }
     }
 
-    return cfg_vals;
+    if (json_values.contains("timeout_seconds") && json_values.at("timeout_seconds").is_number()) {
+        auto time_val = json_values.at("timeout_seconds").as_int64();
+        if(valid_timeout_seconds(time_val)) {
+            this->config_vals_.timeout_seconds_ = static_cast<unsigned int>(time_val);
+        }
+        else {
+            LOG_WARNING << "Invalid timeout seconds in JSON:" << time_val;
+        }
+    }
+    
+    if (json_values.contains("max_body_size") && json_values.at("max_body_size").is_number()) {
+        auto size_val = json_values.at("max_body_size").as_int64();
+        if(valid_max_body_size(size_val)) {
+            this->config_vals_.max_body_size_ = static_cast<size_t>(size_val);
+        }
+        else {
+            LOG_WARNING << "Invalid max body size in JSON:" << size_val;
+        }
+    }
+
 }
 
+// 采用优先级覆盖的方法处理传入/配置的参数
+//      我认为关于json的解析可以承接该部分的设计
+// p1. command line
+// p2. json config
+// p3. default value
+// 所以最终的配置可能是以上三种杂合的结果，需要编写配置回显功能
 server_config::configuration::
 configuration(int argc, char *argv[])
 {
-    this->config_vals_ = load_config(argc, argv);
+    this->config_vals_ = config_values{};
+    try {
+        apply_json_config("config.json");
+    }
+    catch(std::exception &e) {
+        LOG_WARNING << "Faild to load JSON config: " << e.what() << ". Using defaults and command line.";
+    }
+    apply_command_line(argc, argv);
+    this->dump();
+}
+
+void
+server_config::configuration::
+dump() const {
+    LOG_INFO << "Address:         " << config_vals_.address_;
+    LOG_INFO << "Port:            " << config_vals_.port_;
+    LOG_INFO << "Document Root:   " << config_vals_.doc_root_;
+    LOG_INFO << "Threads:         " << config_vals_.threads_;
+    LOG_INFO << "Timeout (sec):   " << config_vals_.timeout_seconds_;
+    LOG_INFO << "Max Body Size:   " << config_vals_.max_body_size_ << " bytes";
 }
 
 
