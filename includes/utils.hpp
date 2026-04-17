@@ -31,6 +31,18 @@ make_not_found(
     const http::request<http::string_body>& req,
     beast::string_view target);
 
+// 生成 405 Not Found 响应
+http::response<http::string_body>
+make_method_not_allowed(
+    const http::request<http::string_body>& req,
+    beast::string_view target);
+
+// 生成 413 Payload Too Large 响应
+http::response<http::string_body>
+make_payload_too_large(
+    const http::request<http::string_body>& req,
+    beast::string_view target);
+
 // 生成 500 Internal Server Error 响应
 http::response<http::string_body>
 make_server_error(

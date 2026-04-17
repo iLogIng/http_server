@@ -78,6 +78,10 @@ is_safe_path(beast::string_view path)
 }
 
 // 安全的文件路径连接方法，返回该平台支持的路径字符串
+// 发往网站的资源请求，仅可见网站根目录，但是在服务器主机上，网站根目录是存在于某一个路径之下的
+// 所以需要进行拼接
+// base 一般为网站根目录
+// path 一般为资源目标位置，（相对于网站根目录）
 std::string
 server_utils::
 path_cat(
@@ -147,6 +151,39 @@ make_not_found(
     res.keep_alive(req.keep_alive());
     res.body() = "Resource: '" + std::string(target) + "' was not found.";
     LOG_WARNING << "Resource Not Found: '" << target << "'";
+    res.prepare_payload();
+    return res;
+}
+
+// 生成 405 Method Not Allowed
+http::response<http::string_body>
+server_utils::
+make_method_not_allowed(
+    const http::request<http::string_body>& req,
+    beast::string_view target)
+{
+    http::response<http::string_body> res{http::status::method_not_allowed, req.version()};
+    res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
+    res.set(http::field::content_type, "text/html");
+    res.keep_alive(req.keep_alive());
+    res.body() = "Resource: '" + std::string(target) + "' was not allowed.";
+    LOG_WARNING << "Resource is Not Allowed: '" << target << "'";
+    res.prepare_payload();
+    return res;
+}
+
+// 生成 413 Payload Too Large 响应
+http::response<http::string_body>
+make_payload_too_large(
+    const http::request<http::string_body>& req,
+    beast::string_view target)
+{
+    http::response<http::string_body> res{http::status::payload_too_large, req.version()};
+    res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
+    res.set(http::field::content_type, "text/html");
+    res.keep_alive(req.keep_alive());
+    res.body() = "Payload Too Large: '" + std::to_string(req.payload_size().value());
+    LOG_WARNING << "Payload Too Large: " << req.payload_size();
     res.prepare_payload();
     return res;
 }

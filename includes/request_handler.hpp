@@ -23,16 +23,22 @@ handle_request(
     // 否则，返回 400 Bad Request 响应
     if( req.method() != http::verb::get &&
         req.method() != http::verb::head)
+    {
         return make_bad_request(req, "Unknown HTTP-method");
+    }
 
     // 保证请求路径合法，防止路径遍历攻击
     if(!is_safe_path(req.target()))
+    {
         return make_bad_request(req, "Illegal request-target");
+    }
 
     // 生成一个指向被请求文件（资源）的路径
     std::string path = path_cat(doc_root, req.target());
     if(req.target().back() == '/')
+    {
         path.append("index.html");
+    }
 
     // 尝试打开该文件（资源）
     beast::error_code ec;
