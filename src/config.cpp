@@ -27,37 +27,43 @@ max_body_size() const
 { return config_vals_.max_body_size_; }
 
 bool
-server_config::valid_address(std::string &addr)
+server_config::
+valid_address(std::string &addr)
 {
     return !addr.empty();
 }
 
 bool
-server_config::valid_port(uint64_t port)
+server_config::
+valid_port(uint64_t port)
 {
     return port > 0 && port <= 65535;
 }
 
 bool
-server_config::valid_doc_root(std::string &path)
+server_config::
+valid_doc_root(std::string &path)
 {
     return !path.empty();
 }
 
 bool
-server_config::valid_threads(uint64_t count)
+server_config::
+valid_threads(uint64_t count)
 {
     return count > 0 && count <= boost::thread::hardware_concurrency() * 2;
 }
 
 bool
-server_config::valid_timeout_seconds(uint64_t timeout_second)
+server_config::
+valid_timeout_seconds(uint64_t timeout_second)
 {
     return timeout_second > 0;
 }
 
 bool
-server_config::valid_max_body_size(uint64_t max_body_size)
+server_config::
+valid_max_body_size(uint64_t max_body_size)
 {
     return max_body_size > 0;
 }
@@ -98,9 +104,9 @@ apply_command_line(int argc, char *argv[])
     if(vm.count("doc_root"))
         this->config_vals_.doc_root_ = vm["doc_root"].as<std::string>();
     if(vm.count("threads"))
-        this->config_vals_.threads_ = vm["threads"].as<unsigned short>();
-    if(vm.count("timeout_second"))
-        this->config_vals_.timeout_seconds_ = vm["timeout_seconds"].as<unsigned short>();
+        this->config_vals_.threads_ = vm["threads"].as<unsigned int>();
+    if(vm.count("timeout_seconds"))
+        this->config_vals_.timeout_seconds_ = vm["timeout_seconds"].as<unsigned int>();
     if(vm.count("max_body_size"))
         this->config_vals_.max_body_size_ = vm["max_body_size"].as<size_t>();
 
