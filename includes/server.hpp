@@ -4,36 +4,38 @@
 #include <memory>
 #include <boost/asio.hpp>
 #include <boost/beast.hpp>
+#include <boost/chrono.hpp>
 
 #include "logger.hpp"
 #include "request_handler.hpp"
-
-namespace beast = boost::beast;
-namespace http = beast::http;
-namespace net = boost::asio;
-using tcp = boost::asio::ip::tcp;
 
 // 错误处理
 void
 fail(beast::error_code ec, char const* what);
 
-
-// 会话
-// 处理HTTP服务器的连接
-class session
-    :   public std::enable_shared_from_this<session>
+// 服务器主机，负责监听和处理连接请求
+namespace server_host
 {
+namespace beast = boost::beast;
+namespace http = beast::http;
+namespace net = boost::asio;
+using tcp = boost::asio::ip::tcp;
+
+class session
+    : public std::enable_shared_from_this<session>
+{
+private:
     beast::tcp_stream stream_;                          // TCP 连接流
     beast::flat_buffer buffer_;                         // 平坦的缓存区域
-    std::shared_ptr<std::string const> doc_root_;       // 网站根目录
     http::request<http::string_body> req_;              // 客户端请求报文
+    server_service::request_handler request_handler_;   // 请求处理器对象
 
 public:
     // 构造函数
     // 获取该套接字接口上，流的所有权
     session(
         tcp::socket&& socket,
-        std::shared_ptr<std::string const> const& doc_root
+        const server_config::configuration& config
     );
 
     // 开始异步操作
@@ -66,22 +68,20 @@ public:
     do_close();
 };
 
-//------------------------------------------------------------------------------
-
-// 允许接入的连接请求并开始会话
 class listener
-    :   public std::enable_shared_from_this<listener>
+    : public std::enable_shared_from_this<listener>
 {
+private:
     net::io_context& ioc_;                              // 异步IO上下文
     tcp::acceptor acceptor_;                            // 接收监听器
-    std::shared_ptr<std::string const> doc_root_;       // 文件根目录
+    const server_config::configuration& config_;        // 服务器配置对象
 
 public:
     // 初始化对象，设置监听
     listener(
         net::io_context& ioc,
         tcp::endpoint endpoint,
-        std::shared_ptr<std::string const> const& doc_root
+        const server_config::configuration& config
     );
 
     // 开始监听接入连接
@@ -96,3 +96,7 @@ private:
     void
     on_accept(beast::error_code ec, tcp::socket &&socket);
 };
+
+}   // namespace server_host
+
+

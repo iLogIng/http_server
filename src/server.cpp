@@ -7,20 +7,19 @@ fail(beast::error_code ec, char const* what)
     LOG_ERROR << what << ": " << ec.message() << "\n";
 }
 
-
-// 构造函数
-// 获取该套接字接口上，流的所有权
-session::session(
-    tcp::socket&& socket,
-    std::shared_ptr<std::string const> const& doc_root
+server_host::session::
+session(
+    server_host::tcp::socket&& socket,
+    const server_config::configuration& config
 )
-    :   stream_(std::move(socket)),
-        doc_root_(doc_root)
-{ }
+    : stream_(std::move(socket))
+    , request_handler_(config)
+{}
 
 // 开始异步操作
 void
-session::run()
+server_host::session::
+run()
 {
     // 虽然单线程环境并非严格必要，
     // 但是本示例代码默认以线程安全的方式编写
@@ -33,15 +32,15 @@ session::run()
 }
 
 // 读操作
-void
-session::do_read()
+void server_host::session::
+do_read()
 {
     // 在读操作之前，先清空请求
     // 否则以下操作就是未定义的
     req_ = {};
 
     // 设定超时时长
-    stream_.expires_after(std::chrono::seconds(30));
+    stream_.expires_after(std::chrono::seconds(request_handler_.config().timeout_seconds()));
 
     // 读请求
     http::async_read(stream_, buffer_, req_,
@@ -53,8 +52,8 @@ session::do_read()
 }
 
 // 读操作
-void
-session::on_read(
+void server_host::session::
+on_read(
     beast::error_code ec,
     std::size_t bytes_transferred)
 {
@@ -69,13 +68,14 @@ session::on_read(
 
     // 发送响应
     send_response(
-        handle_request(*doc_root_, std::move(req_))
+        request_handler_.handle_request(req_)
     );
 }
 
 // 发送响应
 void
-session::send_response(http::message_generator&& msg)
+server_host::session::
+send_response(http::message_generator&& msg)
 {
     // 获取持续连接字段值
     bool keep_alive = msg.keep_alive();
@@ -94,7 +94,8 @@ session::send_response(http::message_generator&& msg)
 
 // 写操作
 void
-session::on_write(
+server_host::session::
+on_write(
     bool keep_alive,
     beast::error_code ec,
     std::size_t bytes_transferred)
@@ -117,7 +118,8 @@ session::on_write(
 
 // 关闭操作
 void
-session::do_close()
+server_host::session::
+do_close()
 {
     // 发送一个 TCP 关闭消息
     beast::error_code ec;
@@ -126,17 +128,19 @@ session::do_close()
     // 在此处，该连接已经优雅的关闭了
 }
 
-//------------------------------------------------------------------------------
 
-// 初始化对象，设置监听
-listener::listener(
-    net::io_context& ioc,
-    tcp::endpoint endpoint,
-    std::shared_ptr<std::string const> const& doc_root
+// ===============================
+
+
+server_host::listener::
+listener(
+    server_host::net::io_context& ioc,
+    server_host::tcp::endpoint endpoint,
+    const server_config:: configuration& config
 )
     : ioc_(ioc)
-    , acceptor_(net::make_strand(ioc))
-    , doc_root_(doc_root)
+    , acceptor_(server_host::net::make_strand(ioc))
+    , config_(config)
 {
     beast::error_code ec;
 
@@ -176,14 +180,16 @@ listener::listener(
 
 // 开始监听接入连接
 void
-listener::run()
+server_host::listener::
+run()
 {
     do_accept();
 }
 
 // 进行监听
 void
-listener::do_accept()
+server_host::listener::
+do_accept()
 {
     // 新连接获得其自己的strand串行执行链
     acceptor_.async_accept(
@@ -196,7 +202,8 @@ listener::do_accept()
 }
 
 void
-listener::on_accept(beast::error_code ec, tcp::socket &&socket)
+server_host::listener::
+on_accept(beast::error_code ec, tcp::socket &&socket)
 {
     if(ec)
     {
@@ -208,7 +215,7 @@ listener::on_accept(beast::error_code ec, tcp::socket &&socket)
         // 创建并开始一个新会话
         std::make_shared<session>(
             std::move(socket),
-            doc_root_
+            config_
         )->run();
     }
 
