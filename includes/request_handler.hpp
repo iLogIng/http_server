@@ -2,12 +2,36 @@
 
 #include <boost/asio.hpp>
 
+#include "config.hpp"
 #include "utils.hpp"
+#include "static_file_service.hpp"
 
 namespace beast = boost::beast;
 namespace http = beast::http;
 
 using namespace server_utils;
+
+namespace server_service
+{
+
+class request_handler
+{
+private:
+    // 组合了一个静态文件服务对象，用于处理静态文件请求
+    server_service::static_file_service static_file_service_;
+
+public:
+    explicit request_handler(const server_config::configuration& config);
+
+    const server_config::configuration& config() const;
+
+    // 处理请求的结构，返回一个消息生成器
+    http::message_generator handle_request(http::request<http::string_body>& req);
+
+
+};
+
+} // namespace server_service
 
 // 针对不同的请求返回响应
 //
@@ -27,17 +51,15 @@ handle_request(
         return make_bad_request(req, "Unknown HTTP-method");
     }
 
-    // 保证请求路径合法，防止路径遍历攻击
-    if(!is_safe_path(req.target()))
-    {
-        return make_bad_request(req, "Illegal request-target");
+    std::string path = server_utils::secure_file_cath(doc_root, req.target());
+    if (path.empty()) {
+        return server_utils::make_bad_request(req, req.target());
     }
-
-    // 生成一个指向被请求文件（资源）的路径
-    std::string path = path_cat(doc_root, req.target());
-    if(req.target().back() == '/')
-    {
-        path.append("index.html");
+    if (req.target().back() == '/') {
+        path = server_utils::secure_file_cath(path, "index.html");
+        if (path.empty()) {
+            return server_utils::make_bad_request(req, req.target());
+        }
     }
 
     // 尝试打开该文件（资源）
