@@ -36,27 +36,32 @@
 > 目录汇总，包含各个模块的引用
 >
 
-- ***/***
-  - ***src/***
-    - **logger.hpp**
-      > 日志类封装
-      >
-    - **server.hpp**
-      > 服务器核心listener + session管理
-      >
-    - **main.cpp**
-      > 主程序入口，启动服务
-      >
-    - **router.hpp**
-      > 路由及中间件
-      >
-    - **utils.hpp**
-      > 工具函数
-      >
-    - **request_handler.hpp**
-  - ***test/***
-    > 单元测试
-    >
+**模块简述**
+
+- **logger**
+  - 日志模块
+- **config**
+  - 配置模块
+- **utils**
+  - 工具模块
+- **static_file_service**
+  - 静态文件服务模块
+
+- ***test/***
+  - 测试单元
+
+## 服务器设计结构
+
+**三层结构**
+
+- **static_file_service**
+  - 静态文件处理，生成相应的http响应报文
+  - 为request_handler提供响应报文
+- **request_handler**
+  - 请求处理，管理各个功能路由，包含静态文件处理路由
+  - 将传来的请求，发送至相应的文件处理模块，获取响应报文
+- **session**
+  - 会话处理，处理服务器与客户的连接
 
 ## TODO
 
