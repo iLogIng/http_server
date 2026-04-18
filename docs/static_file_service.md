@@ -1,7 +1,7 @@
 # static_file_service
 
 > ***/includes/static_file_service.hpp***
-> ***日志类***
+> ***静态文件处理类***
 >
 
 > 依赖:
