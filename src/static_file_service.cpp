@@ -8,6 +8,13 @@ static_file_service(const server_config::configuration &config)
     : config_(config)
 {}
 
+const server_config::configuration&
+server_service::static_file_service::
+config() const
+{
+    return config_;
+}
+
 server_service::http::message_generator
 server_service::static_file_service::
 handle_GET_request(

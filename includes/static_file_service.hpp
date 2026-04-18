@@ -23,6 +23,8 @@ private:
 public:
     explicit static_file_service(const server_config::configuration &config);
 
+    const server_config::configuration& config() const;
+
     // 类型擦除，返回一个http::message_generator，允许在不暴露具体类型的情况下生成HTTP响应
     // 隐藏内部请求的分析与响应的构建
     http::message_generator handle_request(

@@ -28,7 +28,7 @@
 
 #### 成员变量
 
-#### private
+##### private
 
 - `const server_config::configuration&` **config_**
   - 是对配置类的引用
@@ -54,6 +54,11 @@
     - `http::message_generator`
 
 ##### public
+
+- **config()**
+  > 提供对配置信息的常量引用
+  - **return**
+    - `const server_config::configuration&`
 
 #### 构造函数
 

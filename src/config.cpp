@@ -126,24 +126,18 @@ apply_json_config(std::string path)
     buffer << ifs.rdbuf();
     auto json_values = json::parse(buffer.str()).as_object();
 
-    auto load_string_type_val =
-    [&](const char *key) -> std::string {
-        if (json_values.contains(key) && json_values.at(key).is_string()) {
-            return std::string(json_values.at(key).as_string());
-        }
-    };
-
-#if 0
-    auto load_uint64_type_val =
-    [&](const char *key) -> uint64_t {
-        if (json_values.contains(key) && json_values.at(key).is_number()) {
-            return json_values.at(key).as_uint64();
-        }
-    };
-#endif
-
-    this->config_vals_.address_ = load_string_type_val("address");
-    this->config_vals_.doc_root_ = load_string_type_val("doc_root");
+    if (json_values.contains("address") && json_values.at("address").is_string()) {
+        this->config_vals_.address_ = std::string(json_values.at("address").as_string());
+    }
+    else {
+        LOG_WARNING << "Address Not Found or Invalid in JSON config.";
+    }
+    if(json_values.contains("doc_root") && json_values.at("doc_root").is_string()) {
+        this->config_vals_.doc_root_ = std::string(json_values.at("doc_root").as_string());
+    }
+    else {
+        LOG_WARNING << "Document Root Not Found or Invalid in JSON config.";
+    }
 
     if (json_values.contains("port") && json_values.at("port").is_number()) {
         auto port_val = json_values.at("port").as_int64();
