@@ -120,6 +120,82 @@ path_cat(
     return result;
 }
 
+// 提供根目录缓存功能，减少检查次数
+const std::string
+server_utils::
+get_normalized_doc_root(const std::string& raw_root)
+{
+    static boost::mutex cache_mutex;
+    static std::string cached_root;
+    static std::string cached_raw;
+
+    boost::lock_guard<boost::mutex> lock(cache_mutex);
+    if(cached_raw != raw_root) {
+        try {
+            fs::path root_path(raw_root);
+            if (!fs::exists(root_path)) {
+                LOG_ERROR << "Document root does not exist: " << raw_root;
+                cached_root.clear();
+            }
+            else {
+                cached_root = fs::canonical(root_path).string();
+                if (!cached_root.empty() && cached_root.back() != fs::path::preferred_separator) {
+                    cached_root += fs::path::preferred_separator;
+                }
+            }
+        }
+        catch (std::exception &e) {
+            LOG_ERROR << "Failed to canonicalize document root: " << e.what();
+            cached_root.clear();
+        }
+        cached_raw = raw_root;
+    }
+    return cached_root;
+}
+
+// 安全的拼接路径，依赖boost::filesystem库，返回平台支持的路径字符串
+// 但是，使用boost::filesystem库进行路径拼接和规范化需要访问主机的文件系统，带来一定的开销，
+// 因此，在此之前定义的is_safe_path与path_cat方法仍然必要，以提供一种更轻量级的路径处理方式，
+// 适用于大多数常见的请求场景，而secure_file_cat方法则作为一种更安全但可能更慢的选项，适用于需要更严格安全保障的场景。
+std::string
+server_utils::
+secure_file_cath(
+    beast::string_view doc_root,
+    beast::string_view target
+)
+{
+    // 轻量化的路径安全性检查
+    if (!is_safe_path(target)) {
+        LOG_WARNING << "Unsafe target path detected: " << target;
+        return "";
+    }
+
+    // 获取规范路径缓存
+    const std::string normal_root = get_normalized_doc_root(std::string(doc_root));
+    if (normal_root.empty()) {
+        LOG_ERROR << "Invalid document root: " << doc_root;
+        return "";
+    }
+
+    // 路径拼接与规范化
+    fs::path full_path = fs::path(normal_root) / fs::path(target.begin(), target.end());
+    fs::path normalized_full_path;
+    try {
+        normalized_full_path = fs::weakly_canonical(full_path);
+    }
+    catch (const fs::filesystem_error& e) {
+        LOG_ERROR << "Failed to canonicalize path: " << e.what();
+        return "";
+    }
+
+    std::string norm_path = normalized_full_path.string();
+    if (norm_path.find(normal_root) != 0) {
+        LOG_WARNING << "Path traversal attempt: " << target << " -> " << norm_path;
+        return "";
+    }
+    return norm_path;
+}
+
 
 // 生成 400 Bad Request 响应
 http::response<http::string_body>
@@ -160,30 +236,31 @@ http::response<http::string_body>
 server_utils::
 make_method_not_allowed(
     const http::request<http::string_body>& req,
-    beast::string_view target)
+    beast::string_view method)
 {
     http::response<http::string_body> res{http::status::method_not_allowed, req.version()};
     res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
     res.set(http::field::content_type, "text/html");
     res.keep_alive(req.keep_alive());
-    res.body() = "Resource: '" + std::string(target) + "' was not allowed.";
-    LOG_WARNING << "Resource is Not Allowed: '" << target << "'";
+    res.body() = "Method: '" + std::string(method) + "' was not allowed.";
+    LOG_WARNING << "Method Not Allowed: '" << method << "'";
     res.prepare_payload();
     return res;
 }
 
 // 生成 413 Payload Too Large 响应
 http::response<http::string_body>
+server_utils::
 make_payload_too_large(
     const http::request<http::string_body>& req,
-    beast::string_view target)
+    std::size_t max_size)
 {
     http::response<http::string_body> res{http::status::payload_too_large, req.version()};
     res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
     res.set(http::field::content_type, "text/html");
     res.keep_alive(req.keep_alive());
-    res.body() = "Payload Too Large: '" + std::to_string(req.payload_size().value());
-    LOG_WARNING << "Payload Too Large: " << req.payload_size();
+    res.body() = "Payload Too Large: '" + std::to_string(req.payload_size().value()) + "' exceeds the limit of '" + std::to_string(max_size) + "'";
+    LOG_WARNING << "Payload Too Large: " << req.payload_size().value() << " > " << max_size;
     res.prepare_payload();
     return res;
 }

@@ -3,12 +3,14 @@
 #include "config.hpp"
 
 #include <boost/beast.hpp>
+#include <boost/filesystem.hpp>
 #include <string>
 
 namespace server_service
 {
     namespace beast = boost::beast;
     namespace http = beast::http;
+    namespace fs = boost::filesystem;
 
 // 基于一个网站根目录提供服务
 class static_file_service
@@ -23,7 +25,7 @@ public:
 
     // 类型擦除，返回一个http::message_generator，允许在不暴露具体类型的情况下生成HTTP响应
     // 隐藏内部请求的分析与响应的构建
-    http::message_generator serve_response_file(
+    http::message_generator handle_request(
         const http::request<http::string_body>& req
     ) const;
 

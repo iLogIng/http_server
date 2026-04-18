@@ -25,11 +25,17 @@ handle_GET_request(
             return server_utils::make_not_found(req, full_path);
         }
         else {
-            return server_utils::make_server_error(req, ec.message());
+            std::string err_msg = ec.message();
+            return server_utils::make_server_error(req, err_msg);
         }
     }
 
     const std::size_t size = body.size();
+
+    if (size > this->config_.max_body_size()) {
+        LOG_WARNING << "Payload Too Large: " << size << " > " << this->config_.max_body_size();
+        return server_utils::make_payload_too_large(req, this->config_.max_body_size());
+    }
 
     http::response<http::file_body> res{
         std::piecewise_construct,
@@ -61,11 +67,17 @@ handle_HEAD_request(
             return server_utils::make_not_found(req, full_path);
         }
         else {
-            return server_utils::make_server_error(req, ec.message());
+            std::string err_msg = ec.message();
+            return server_utils::make_server_error(req, err_msg);
         }
     }
 
     const std::size_t size = body.size();
+
+    if(size > this->config_.max_body_size()) {
+        LOG_WARNING << "Payload Too Large: " << size << " > " << this->config_.max_body_size();
+        return server_utils::make_payload_too_large(req, this->config_.max_body_size());
+    }
 
     http::response<http::empty_body> res{http::status::ok, req.version()};
     res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
@@ -77,7 +89,7 @@ handle_HEAD_request(
 }
 
 server_service::http::message_generator
-server_service::static_file_service::serve_response_file(
+server_service::static_file_service::handle_request(
     const http::request<http::string_body>& req
 ) const
 {
@@ -90,10 +102,17 @@ server_service::static_file_service::serve_response_file(
         return server_utils::make_bad_request(req, "Illegal request-target");
     }
 
-    std::string full_path = server_utils::path_cat(this->config_.doc_root(), req.target());
-    if(req.target().back() == '/') {
-        full_path = server_utils::path_cat(full_path, "index.html");
+    std::string full_path = server_utils::secure_file_cath(this->config_.doc_root(), req.target());
+    if (full_path.empty()) {
+        return server_utils::make_bad_request(req, req.target());
     }
+    if (req.target().back() == '/') {
+        full_path = server_utils::secure_file_cath(full_path, "index.html");
+        if (full_path.empty()) {
+            return server_utils::make_bad_request(req, req.target());
+        }
+    }
+
 
     if(req.method() == http::verb::get) {
         return handle_GET_request(req, full_path);

@@ -31,6 +31,12 @@
 - **is_safe_path(beast::string_view path)**
   - 防止路径遍历攻击，确保请求路径的安全性
 
+- **get_normalizaed_doc_root(const std::string& raw_root)**
+  - 将网站根目录路径进行规范化，并添加根目录缓存功能，能缓存上一个处理的根目录路径，返回拷贝，暂时不考虑多线程优化
+
+- **secure_file_cath(beast::string_view doc_root, beast::string_view target)**
+  - 提供依赖 *boost::filesystem* 库的安全路径拼接功能，但使用boost::filesystem时，由于库接口设计的基础依赖，需要访问主机的文件系统，产生一定的开销，所以，在此之前的 *is_safe_path* 与 *path_cat* 方法所提供的轻量级路径处理方法仍有必要
+
 - **std::string path_cat(beast::string_view base, beast::string_veiw path)**
   - 安全的将网站根目录与文件路径相连接，返回所处平台支持的路径字符串
 
@@ -41,6 +47,12 @@
 
 - ***404 Not Found***
   - *make_not_found*
+
+- ***405 Method Not Allowed***
+  - *make_method_not_allowed*
+
+- ***413 Payload Too Large***
+  - *make payload_too_large*
   
 - ***500 Internal Server Error***
   - *make_server_error*
