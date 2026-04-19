@@ -10,10 +10,10 @@ fail(beast::error_code ec, char const* what)
 server_host::session::
 session(
     server_host::tcp::socket&& socket,
-    const server_config::configuration& config
+    request_handler_ptr handler
 )
     : stream_(std::move(socket))
-    , request_handler_(config)
+    , handler_(std::move(handler))
 {}
 
 // 开始异步操作
@@ -40,7 +40,7 @@ do_read()
     req_ = {};
 
     // 设定超时时长
-    stream_.expires_after(std::chrono::seconds(request_handler_.config().timeout_seconds()));
+    stream_.expires_after(std::chrono::seconds(handler_->config().timeout_seconds()));
 
     // 读请求
     http::async_read(stream_, buffer_, req_,
@@ -64,11 +64,13 @@ on_read(
         return do_close();
 
     if(ec)
+    {
         return fail(ec, "read");
+    }
 
     // 发送响应
     send_response(
-        request_handler_.handle_request(req_)
+        handler_->handle_request(req_)
     );
 }
 
@@ -136,11 +138,11 @@ server_host::listener::
 listener(
     server_host::net::io_context& ioc,
     server_host::tcp::endpoint endpoint,
-    const server_config:: configuration& config
+    request_handler_ptr handler
 )
     : ioc_(ioc)
     , acceptor_(server_host::net::make_strand(ioc))
-    , config_(config)
+    , handler_(std::move(handler))
 {
     beast::error_code ec;
 
@@ -215,7 +217,7 @@ on_accept(beast::error_code ec, tcp::socket &&socket)
         // 创建并开始一个新会话
         std::make_shared<session>(
             std::move(socket),
-            config_
+            handler_
         )->run();
     }
 

@@ -2,13 +2,6 @@
 #include <boost/asio.hpp>
 #include <boost/config.hpp>
 
-namespace beast = boost::beast;
-namespace http = beast::http;
-namespace net = boost::asio;
-using tcp = boost::asio::ip::tcp;
-
-// ===========================================
-
 #include <algorithm>
 #include <cstdlib>
 #include <functional>
@@ -21,6 +14,11 @@ using tcp = boost::asio::ip::tcp;
 #include "../includes/config.hpp"
 #include "../includes/server.hpp"
 
+namespace beast = boost::beast;
+namespace http = beast::http;
+namespace net = boost::asio;
+using tcp = boost::asio::ip::tcp;
+
 int main(int argc, char* argv[])
 {
     server_logger::init_logger("./logs/http_server.log"); // 初始化日志系统
@@ -29,11 +27,12 @@ int main(int argc, char* argv[])
     LOG_INFO << "Starting HTTP server...";
 
     net::io_context io{static_cast<int>(config.threads())};
-    std::make_shared<server_host::listener>(
-        io,
-        tcp::endpoint{net::ip::make_address(config.address()), config.port()},
-        config
-    )->run();
+
+    auto handler = std::make_shared<server_service::request_handler>(config);
+    auto endpoint = tcp::endpoint(net::ip::make_address(config.address()), config.port());
+    auto listener = std::make_shared<server_host::listener>(io, endpoint, handler);
+
+    listener->run();
     
     std::vector<std::thread> thrds;
     thrds.reserve(config.threads() - 1);

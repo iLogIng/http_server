@@ -27,18 +27,19 @@ using tcp = boost::asio::ip::tcp;
 class session
     : public std::enable_shared_from_this<session>
 {
+    using request_handler_ptr = std::shared_ptr<server_service::request_handler>;
 private:
     beast::tcp_stream stream_;                          // TCP 连接流
     beast::flat_buffer buffer_;                         // 平坦的缓存区域
     http::request<http::string_body> req_;              // 客户端请求报文
-    server_service::request_handler request_handler_;   // 请求处理器对象
+    request_handler_ptr handler_;                       // 请求处理器对象的共享指针
 
 public:
     // 构造函数
     // 获取该套接字接口上，流的所有权
     session(
         tcp::socket&& socket,
-        const server_config::configuration& config
+        request_handler_ptr handler
     );
 
     // 开始异步操作
@@ -74,17 +75,18 @@ public:
 class listener
     : public std::enable_shared_from_this<listener>
 {
+    using request_handler_ptr = std::shared_ptr<server_service::request_handler>;
 private:
     net::io_context& ioc_;                              // 异步IO上下文
     tcp::acceptor acceptor_;                            // 接收监听器
-    const server_config::configuration& config_;        // 服务器配置对象
+    request_handler_ptr handler_;                       // 请求处理器对象的指针
 
 public:
     // 初始化对象，设置监听
     listener(
         net::io_context& ioc,
         tcp::endpoint endpoint,
-        const server_config::configuration& config
+        request_handler_ptr handler
     );
 
     // 开始监听接入连接
