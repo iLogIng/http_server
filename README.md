@@ -31,7 +31,7 @@
 
 ## 项目结构
 
-### [目录 contents](./docs/contents.md)
+### [目录 contents](./docs/CONTENTS.md)
 
 > 目录汇总，包含各个模块的引用
 >
