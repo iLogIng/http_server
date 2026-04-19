@@ -26,8 +26,7 @@ public:
     const server_config::configuration& config() const;
 
     // 处理请求的结构，返回一个消息生成器
-    http::message_generator handle_request(http::request<http::string_body>& req);
-
+    http::message_generator handle_request(const http::request<http::string_body>& req);
 
 };
 

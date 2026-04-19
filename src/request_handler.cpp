@@ -7,9 +7,10 @@ config() const
     return static_file_service_.config();
 }
 
+// 目前的请求处理器仅仅包装了一个静态文件服务对象，需要扩展路由功能，以支持更多的请求类型
 server_service::http::message_generator
 server_service::request_handler::
-handle_request(http::request<http::string_body>& req)
+handle_request(const http::request<http::string_body>& req)
 {
     return static_file_service_.handle_request(req);
 }

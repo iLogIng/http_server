@@ -21,6 +21,9 @@ namespace http = beast::http;
 namespace net = boost::asio;
 using tcp = boost::asio::ip::tcp;
 
+/**
+ * 目前session包含了一个request_handler对象，后续可以扩展为一个路由器对象，以支持更多的请求类型
+ */
 class session
     : public std::enable_shared_from_this<session>
 {
