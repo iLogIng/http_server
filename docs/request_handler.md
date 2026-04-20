@@ -1,7 +1,7 @@
 # request_handler
 
 > ***/includes/request_handler.hpp***
-> ***日志类***
+> ***请求处理模块***
 >
 
 > 依赖:
@@ -17,7 +17,7 @@
 
 ## 类实现
 
-包含一个 **request_handler** 类提供静态文件响应功能
+包含一个 **request_handler** 类提供请求处理功能
 
 ### request_handler 类
 
