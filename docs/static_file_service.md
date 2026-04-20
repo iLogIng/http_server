@@ -7,6 +7,7 @@
 > 依赖:
 > ***Boost::Beast***
 > ***Boost::FileSystem***
+> ***router.hpp***
 > ***utils.hpp***
 >
 
@@ -59,6 +60,18 @@
   > 提供对配置信息的常量引用
   - **return**
     - `const server_config::configuration&`
+
+- **handle_request()**
+  > 处理请求，生成响应
+  - **args**
+    - `const http::request<http::string_body>&`
+  - **return**
+    - `http::message_generator`
+
+- **as_handler()**
+  > 包装 handle_request 返回处理器函数对象
+  - **return**
+    - `Handler`
 
 #### 构造函数
 

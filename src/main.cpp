@@ -11,6 +11,7 @@
 #include <thread>
 #include <vector>
 
+#include "../includes/static_file_service.hpp"
 #include "../includes/config.hpp"
 #include "../includes/server.hpp"
 #include "../includes/router.hpp"

@@ -57,6 +57,8 @@ flowchart TD
   - 平坦的缓存区域
 - `http::request<http::string_body>` **req_**
   - 客户端的请求报文
+- `const server_config::configuration&` **config_**
+  - 服务器配置引用
 - `request_handler_ptr` **handler_**
   - 请求处理对象的共享指针
 
@@ -111,6 +113,10 @@ flowchart TD
   - Asio异步上下文
 - `tcp::acceptor` **acceptor_**
   - 监听，接收器
+- `request_handler_ptr` **handler_**
+  - 请求处理对象的共享指针
+- `const server_config::configuration&` **config_**
+  - 服务器配置引用
 - `request_handler_ptr` **handler_**
   - 请求处理对象的共享指针
 

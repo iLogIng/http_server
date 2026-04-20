@@ -5,7 +5,10 @@
 >
 
 > 依赖:
-> ***static_file_service.hpp***
+> **memory**
+> **router.hpp**
+> **config.hpp**
+> **utils.hpp**
 >
 
 ## 结构
@@ -16,23 +19,44 @@
 
 包含一个 **request_handler** 类提供静态文件响应功能
 
-### request_handler
+### request_handler 类
+
+- ***using*** `std::shared_ptr<router>` **router_ptr**
 
 #### 成员变量
 
 ##### private
 
-- `server_service::static_file_service` **static_file_service_**
-  - 组合静态文件服务类，用于处理静态文件请求
+- `router_ptr` **routers_**
+  - 共享的路由表
+
+- `Handler` **default_handler_**
+  - 默认的处理器
 
 #### 成员函数
 
 ##### public
 
-- **config()**
-  > 提供对配置信息的常量引用
+- **handle_request()**
+  > 处理请求，生成响应报文
+  - **args**
+    - `http::request<http::string_body>&`
   - **return**
-    - `const server_config::configuration&`
+    - `http::message_generator`
+
+- **add_exact_route**
+  > 注册精确路由
+  - **args**
+    - `http::method`
+    - `const std::string&`
+    - `Handler`
+
+- **add_exact_route**
+  > 注册前缀路由
+  - **args**
+    - `http::method`
+    - `const std::string&`
+    - `Handler`
 
 #### 构造函数
 
