@@ -35,7 +35,7 @@ match(const http::request<http::string_body>& req) const
     Handler best_match = nullptr;
     std::size_t best_len = 0;
     for (const auto& pre : prefix_routes_) {
-        if (pre.method == method && target.starts_with(pre.prefix)) {
+        if (pre.method == method && target.find(pre.prefix) == 0) {
             if (pre.prefix.length() > best_len) {
                 best_len = pre.prefix.length();
                 best_match = pre.handler_;

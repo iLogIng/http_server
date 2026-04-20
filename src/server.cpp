@@ -1,5 +1,7 @@
 #include "../includes/server.hpp"
 
+std::atomic<std::size_t> server_host::session::active_sessions_{0};
+
 // 错误处理
 void
 fail(beast::error_code ec, char const* what)
@@ -16,7 +18,14 @@ session(
     : stream_(std::move(socket))
     , config_(config)
     , handler_(std::move(handler))
-{}
+{
+    ++active_sessions_;
+}
+
+server_host::session::
+~session() {
+    --active_sessions_;
+}
 
 // 开始异步操作
 void
@@ -128,8 +137,6 @@ do_close()
     // 发送一个 TCP 关闭消息
     beast::error_code ec;
     stream_.socket().shutdown(tcp::socket::shutdown_send, ec);
-
-    // 在此处，该连接已经优雅的关闭了
 }
 
 
@@ -147,6 +154,7 @@ listener(
     , acceptor_(server_host::net::make_strand(ioc))
     , config_(config)
     , handler_(std::move(handler))
+    , is_stopped_(false)
 {
     beast::error_code ec;
 
@@ -211,21 +219,43 @@ void
 server_host::listener::
 on_accept(beast::error_code ec, tcp::socket &&socket)
 {
+    if (is_stopped_) {
+        LOG_INFO << "Listener Stopped, Ignoring accept event.";
+        return;
+    }
     if(ec)
     {
+        if (ec == net::error::operation_aborted) {
+            LOG_INFO << "Accept operation aborted due to shutdown.";
+            return;
+        }
         fail(ec, "accept");
-        return; // 避免无止尽的循环
+        return;
     }
-    else
-    {
-        // 创建并开始一个新会话
-        std::make_shared<session>(
-            std::move(socket),
-            config_,
-            handler_
-        )->run();
-    }
+
+    // 创建并开始一个新会话
+    std::make_shared<session>(
+        std::move(socket),
+        config_,
+        handler_
+    )->run();
 
     // 监听另一个连接
     do_accept();
 }
+
+void
+server_host::listener::
+stop()
+{
+    is_stopped_ = true;
+    beast::error_code ec;
+    acceptor_.close(ec);
+    if (ec) {
+        LOG_ERROR << "Error closing acceptor: " << ec.message();
+    }
+    else {
+        LOG_INFO << "Acceptor closed, no new connections will be accepted.";
+    }
+}
+

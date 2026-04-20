@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <atomic>
 #include <boost/asio.hpp>
 #include <boost/beast.hpp>
 #include <boost/chrono.hpp>
@@ -29,11 +30,13 @@ class session
 {
     using request_handler_ptr = std::shared_ptr<server_service::request_handler>;
 private:
-    beast::tcp_stream stream_;                          // TCP 连接流
-    beast::flat_buffer buffer_;                         // 平坦的缓存区域
-    http::request<http::string_body> req_;              // 客户端请求报文
-    const server_config::configuration& config_;              // 配置文件
-    request_handler_ptr handler_;                       // 请求处理器对象的共享指针
+    static std::atomic<std::size_t> active_sessions_;       // 活跃的会话数量
+private:
+    beast::tcp_stream stream_;                              // TCP 连接流
+    beast::flat_buffer buffer_;                             // 平坦的缓存区域
+    http::request<http::string_body> req_;                  // 客户端请求报文
+    const server_config::configuration& config_;            // 配置文件
+    request_handler_ptr handler_;                           // 请求处理器对象的共享指针
 
 public:
     // 构造函数
@@ -43,6 +46,9 @@ public:
         const server_config::configuration& config,
         request_handler_ptr handler
     );
+
+    // 析构函数
+    ~session();
 
     // 开始异步操作
     void
@@ -72,6 +78,9 @@ public:
     // 关闭操作
     void
     do_close();
+
+    // 获取当前活跃的http会话数
+    static std::size_t active_sessions() { return active_sessions_; }
 };
 
 class listener
@@ -83,6 +92,7 @@ private:
     tcp::acceptor acceptor_;                            // 接收监听器
     const server_config::configuration& config_;        // 配置文件
     request_handler_ptr handler_;                       // 请求处理器对象的指针
+    bool is_stopped_;
 
 public:
     // 初始化对象，设置监听
@@ -96,6 +106,12 @@ public:
     // 开始监听接入连接
     void
     run();
+
+    // 停止监听
+    void stop();
+
+    // 检查是否停止监听
+    bool is_stopped();
 
 private:
     // 进行监听
