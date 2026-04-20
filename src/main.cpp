@@ -15,6 +15,8 @@
 #include "../includes/config.hpp"
 #include "../includes/server.hpp"
 #include "../includes/router.hpp"
+#include "../includes/graceful_shutdown.hpp"
+
 
 namespace beast = boost::beast;
 namespace http = beast::http;
@@ -54,6 +56,15 @@ int main(int argc, char* argv[])
     auto handler = std::make_shared<server_service::request_handler>(router, default_handler);
     auto endpoint = tcp::endpoint(net::ip::make_address(config.address()), config.port());
     auto listener = std::make_shared<server_host::listener>(io, endpoint, config, handler);
+    server_host::graceful_shutdown shutdown_listener(
+        io, listener,
+        []() {
+            return server_host::session::active_sessions();
+        },
+        std::chrono::seconds(1),
+        std::chrono::seconds(30)
+    );
+    shutdown_listener.start_shutdown_listener([&io] { io.stop(); });
 
     listener->run();
     
