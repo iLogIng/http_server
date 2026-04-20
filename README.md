@@ -55,38 +55,62 @@
   - 测试单元
 
 ```mermaid
+graph TD
+    subgraph 主入口
+        main[main.cpp]
+    end
+
+    subgraph 配置与日志
+        config[server_config::configuration]
+        logger[server_logger]
+    end
+
+    subgraph 工具层
+        utils[server_utils]
+    end
+
+    subgraph 服务层
+        static_service[static_file_service]
+        router[router]
+        request_handler[request_handler]
+    end
+
+    subgraph 网络层
+        listener[listener]
+        session[session]
+    end
+
+    main --> config
+    main --> logger
+    main --> static_service
+    main --> router
+    main --> request_handler
+    main --> listener
+
+    config --> logger
+    utils --> logger
+    static_service --> config
+    static_service --> utils
+    static_service --> logger
+
+    router -.-> Handler[Handler 类型]
+    request_handler --> router
+    request_handler --> Handler
+
+    listener --> request_handler
+    session --> request_handler
+    listener --> config
+    session --> config
+
+    static_service -- as_handler() --> Handler
+    main -- 注册路由 --> router
+    main -- 默认处理器 --> request_handler
+```
+
+```mermaid
 classDiagram
-    class listener {
-        +io_context& ioc_
-        +tcp::acceptor acceptor_
-        +shared_ptr~request_handler~ handler_
-        +run()
-        -do_accept()
-        -on_accept()
-    }
-    class session {
-        +tcp_stream stream_
-        +flat_buffer buffer_
-        +request req_
-        +shared_ptr~request_handler~ handler_
-        +run()
-        -do_read()
-        -on_read()
-        -send_response()
-        -on_write()
-        -do_close()
-    }
-    class request_handler {
-        -static_file_service static_file_service_
-        +handle_request(req) message_generator
-        +config() configuration&
-    }
-    class static_file_service {
-        -const configuration& config_
-        +handle_request(req) message_generator
-        -handle_GET_request()
-        -handle_HEAD_request()
-    }
+    direction TD
+
     class configuration {
         +address()
         +port()
@@ -95,39 +119,77 @@ classDiagram
         +timeout_seconds()
         +max_body_size()
     }
-    class utils {
-        <<static>>
-        +mime_type()
-        +is_safe_path()
-        +path_cat()
-        +secure_file_cath()
-        +make_bad_request()
-        +make_not_found()
-        +make_server_error()
-        +make_payload_too_large()
-        +make_method_not_allowed()
-    }
-    class logger {
-        <<macros>>
-        +LOG_TRACE
-        +LOG_DEBUG
-        +LOG_INFO
-        +LOG_WARNING
-        +LOG_ERROR
-        +LOG_FATAL
+
+    class static_file_service {
+        -const configuration& config_
+        +static_file_service(config)
+        +handle_request(req) message_generator
+        +as_handler() Handler
+        -handle_GET_request(req, full_path)
+        -handle_HEAD_request(req, full_path)
     }
 
-    listener "1" --> "*" session : 创建 (creates)
-    session --> "1" request_handler : 持有 (shared_ptr)
-    request_handler --> "1" static_file_service : 组合 (has-a)
-    request_handler --> "1" configuration : 持有引用 (通过static_file_service)
-    static_file_service --> "1" configuration : 持有引用
-    static_file_service ..> utils : 依赖 (调用工具函数)
-    listener ..> configuration : 持有引用 (用于创建session)
-    session ..> configuration : 间接依赖 (通过handler)
-    request_handler ..> logger : 使用日志宏
-    static_file_service ..> logger : 使用日志宏
-    session ..> logger : 使用日志宏 (fail函数)
+    class router {
+        -unordered_map~exact_route,Handler~ exact_routes_
+        -vector~prefix_route~ prefix_routes_
+        +add_exact_route(method, path, handler)
+        +add_prefix_route(method, prefix, handler)
+        +match(req) Handler
+    }
+
+    class request_handler {
+        -router_ptr routers_
+        -Handler default_handler_
+        +request_handler(router_ptr, default_handler)
+        +add_exact_route(method, path, handler)
+        +add_prefix_route(method, prefix, handler)
+        +handle_request(req) message_generator
+    }
+
+    class session {
+        -beast::tcp_stream stream_
+        -flat_buffer buffer_
+        -http::request req_
+        -const configuration& config_
+        -request_handler_ptr handler_
+        +session(socket, config, handler)
+        +run()
+        -do_read()
+        -on_read(ec, bytes)
+        -send_response(msg)
+        -on_write(keep_alive, ec, bytes)
+        -do_close()
+    }
+
+    class listener {
+        -io_context& ioc_
+        -tcp::acceptor acceptor_
+        -const configuration& config_
+        -request_handler_ptr handler_
+        +listener(ioc, endpoint, config, handler)
+        +run()
+        -do_accept()
+        -on_accept(ec, socket)
+    }
+
+    %% 依赖关系
+    static_file_service --> configuration : 持有引用
+    session --> configuration : 持有引用（超时）
+    listener --> configuration : 持有引用
+
+    request_handler --> router : 组合 (router_ptr)
+    request_handler --> Handler : 持有 default_handler_
+
+    session --> request_handler : 组合 (request_handler_ptr)
+    listener --> request_handler : 组合 (request_handler_ptr)
+    listener --> session : 创建并调用
+
+    static_file_service ..> Handler : as_handler() 返回
+    router ..> Handler : match 返回
+    request_handler ..> Handler : handle_request 调用
+
+    %% 路由注册时的关系（虚线）
+    request_handler --> static_file_service : 可通过 add_route 注册其 as_handler()
 ```
 
 ## 服务器设计结构
