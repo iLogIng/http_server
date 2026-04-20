@@ -7,6 +7,7 @@
 #include <boost/chrono.hpp>
 
 #include "logger.hpp"
+#include "config.hpp"
 #include "request_handler.hpp"
 
 // 错误处理
@@ -32,6 +33,7 @@ private:
     beast::tcp_stream stream_;                          // TCP 连接流
     beast::flat_buffer buffer_;                         // 平坦的缓存区域
     http::request<http::string_body> req_;              // 客户端请求报文
+    const server_config::configuration& config_;              // 配置文件
     request_handler_ptr handler_;                       // 请求处理器对象的共享指针
 
 public:
@@ -39,6 +41,7 @@ public:
     // 获取该套接字接口上，流的所有权
     session(
         tcp::socket&& socket,
+        const server_config::configuration& config,
         request_handler_ptr handler
     );
 
@@ -79,6 +82,7 @@ class listener
 private:
     net::io_context& ioc_;                              // 异步IO上下文
     tcp::acceptor acceptor_;                            // 接收监听器
+    const server_config::configuration& config_;        // 配置文件
     request_handler_ptr handler_;                       // 请求处理器对象的指针
 
 public:
@@ -86,6 +90,7 @@ public:
     listener(
         net::io_context& ioc,
         tcp::endpoint endpoint,
+        const server_config::configuration& config,
         request_handler_ptr handler
     );
 

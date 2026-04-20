@@ -8,12 +8,12 @@ static_file_service(const server_config::configuration &config)
     : config_(config)
 {}
 
-const server_config::configuration&
+server_service::Handler
 server_service::static_file_service::
-config() const
-{
-    return config_;
-}
+as_handler() const { return
+    [this](const http::request<http::string_body>& req) {
+        return this->handle_request(req);
+};}
 
 server_service::http::message_generator
 server_service::static_file_service::
