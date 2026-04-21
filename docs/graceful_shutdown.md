@@ -18,4 +18,4 @@
 
 ## 类实现
 
-
+包含一个 **graceful_shutdown** 类提供
