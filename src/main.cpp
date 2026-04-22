@@ -1,9 +1,3 @@
-#include <boost/beast.hpp>
-#include <boost/asio.hpp>
-
-#include <algorithm>
-#include <cstdlib>
-#include <functional>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -15,7 +9,6 @@
 #include "../includes/server.hpp"
 #include "../includes/router.hpp"
 #include "../includes/graceful_shutdown.hpp"
-
 
 namespace beast = boost::beast;
 namespace http = beast::http;
@@ -55,6 +48,7 @@ int main(int argc, char* argv[])
     auto handler = std::make_shared<server_service::request_handler>(router, default_handler);
     auto endpoint = tcp::endpoint(net::ip::make_address(config.address()), config.port());
     auto listener = std::make_shared<server_host::listener>(io, endpoint, config, handler);
+
     server_host::graceful_shutdown shutdown_listener(
         io, listener,
         []() {
@@ -69,7 +63,7 @@ int main(int argc, char* argv[])
     
     std::vector<std::thread> thrds;
     thrds.reserve(config.threads() - 1);
-    for (size_t i = 0; i < config.threads() - 1; ++i) {
+    for (size_t i = 1; i < config.threads(); ++i) {
         thrds.emplace_back([&io] {
             io.run();
         });

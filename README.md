@@ -242,6 +242,22 @@ $ make http_server
 $ make
 ```
 
+**配置文件**
+
+> 配置文件需放于项目根目录
+> 并命名为 `config.json`
+>
+
+```json
+{
+    "address":"0.0.0.0",
+    "port":8080,
+    "doc_root":"./app/",
+    "threads":1,
+    "timeout_seconds":30,
+    "max_body_size":10485760
+}
+```
 
 ## 文件结构
 

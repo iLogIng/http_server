@@ -3,6 +3,8 @@
 #include "../includes/logger.hpp"
 #include "../includes/utils.hpp"
 
+#include <string>
+
 server_service::static_file_service::
 static_file_service(const server_config::configuration &config)
     : config_(config)

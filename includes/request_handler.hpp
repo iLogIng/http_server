@@ -5,10 +5,11 @@
 #include "router.hpp"
 #include "config.hpp"
 #include "utils.hpp"
-using namespace server_utils;
 
 namespace server_service
 {
+using namespace server_utils;
+
 namespace beast = boost::beast;
 namespace http = beast::http;
 
