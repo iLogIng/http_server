@@ -3,8 +3,8 @@ STD_VERSION = -std=c++17
 
 CXXFLAGS = ${STD_VERSION} -DBOOST_LOG_DYN_LINK -Wall -Wextra -g
 
-BOOST_INCLUDE_DIR = /usr/include
-BOOST_LIB_DIR = /usr/lib
+# BOOST_INCLUDE_DIR = /usr/include
+# BOOST_LIB_DIR = /usr/lib
 
 BOOST_LIBS_LINK = -lboost_system -lboost_filesystem -lboost_thread \
 					-lboost_log -lboost_log_setup \

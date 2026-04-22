@@ -1,14 +1,25 @@
 # 添加源文件
-set(SOURCES main.cpp)
+set(SOURCES
+    main.cpp
+    config.cpp
+    graceful_shutdown.cpp
+    request_handler.cpp
+    router.cpp
+    server.cpp
+    static_file_service.cpp
+    utils.cpp
+)
 
 # 添加头文件
 set(HEADERS
-    config.hpp
-    logger.hpp
-    request_handler.hpp
-    router.hpp
-    server.hpp
-    utils.hpp
+    ../includes/config.hpp
+    ../includes/graceful_shutdown.hpp
+    ../includes/logger.hpp
+    ../includes/request_handler.hpp
+    ../includes/router.hpp
+    ../includes/server.hpp
+    ../includes/static_file_service.hpp
+    ../includes/utils.hpp
 )
 
 add_executable(http_server ${SOURCES} ${HEADERS})
@@ -22,5 +33,6 @@ PRIVATE
     Boost::system
     Boost::thread
     Boost::log
+    Boost::program_options
     Boost::json
 )

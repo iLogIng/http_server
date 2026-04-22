@@ -4,7 +4,6 @@
 #include <atomic>
 #include <boost/asio.hpp>
 #include <boost/beast.hpp>
-#include <boost/chrono.hpp>
 
 #include "logger.hpp"
 #include "config.hpp"

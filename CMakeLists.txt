@@ -13,6 +13,7 @@ find_package(Boost CONFIG COMPONENTS
     thread
     filesystem
     log
+    program_options
     log_setup
     json
 )

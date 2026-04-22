@@ -2,6 +2,8 @@
 
 #include "../includes/logger.hpp"
 
+#include <fstream>
+
 const std::string& server_config::configuration::
 address() const
 { return config_vals_.address_; }

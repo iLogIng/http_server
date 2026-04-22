@@ -2,7 +2,6 @@
 
 #include <boost/beast.hpp>
 #include <boost/filesystem.hpp>
-#include <boost/thread.hpp>
 
 #include "logger.hpp"
 

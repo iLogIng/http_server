@@ -9,6 +9,8 @@
 
 namespace server_host
 {
+class listener;
+
 namespace net = boost::asio;
 namespace chrono = std::chrono;
     

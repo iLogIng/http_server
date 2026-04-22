@@ -13,9 +13,6 @@
 #include <boost/core/null_deleter.hpp>
 #include <boost/filesystem.hpp>
 
-#include <iostream>
-#include <fstream>
-
 namespace server_logger
 {
     namespace logging = boost::log;

@@ -1,5 +1,7 @@
 #include "../includes/utils.hpp"
 
+#include <string>
+#include <thread>
 #include <unordered_map>
 
 using namespace server_utils;
@@ -125,11 +127,11 @@ const std::string
 server_utils::
 get_normalized_doc_root(const std::string& raw_root)
 {
-    static boost::mutex cache_mutex;
+    static std::mutex cache_mutex;
     static std::string cached_root;
     static std::string cached_raw;
 
-    boost::lock_guard<boost::mutex> lock(cache_mutex);
+    std::lock_guard<std::mutex> lock(cache_mutex);
     if(cached_raw != raw_root) {
         try {
             fs::path root_path(raw_root);
