@@ -20,7 +20,8 @@ $(TARGET): $(INCLUDES) $(SRCS)
 	$(CXX) $(CXXFLAGS) $^ $(BOOST_LIBS_LINK) -o $@
 # $(CXX) $(CXXFLAGS) $^ -I$(BOOST_INCLUDE_DIR) -L$(BOOST_LIB_DIR) $(BOOST_LIBS_LINK) -o $@
 
-test: logger.test
+test:
+	$(MAKE) -C test
 
 logger.test: src/logger.hpp test/logger.test.cpp
 	$(CXX) $(CXXFLAGS) $^ $(BOOST_LIBS_LINK) -lgtest -lgtest_main -o ./test/exec/logger.test
