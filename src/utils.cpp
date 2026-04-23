@@ -6,7 +6,7 @@
 
 using namespace server_utils;
 
-static std::unordered_map<std::string, std::string>
+static const std::unordered_map<std::string, std::string>
 mime_types = {
     {".htm", "text/html"},
     {".html", "text/html"},
@@ -50,7 +50,7 @@ mime_type(beast::string_view path)
     }();
     if(mime_types.find(std::string(ext)) != mime_types.end())
     {
-        return mime_types[std::string(ext)];
+        return mime_types.find(std::string(ext))->second;
     }
     return "application/text";
 }

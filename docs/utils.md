@@ -19,8 +19,8 @@
 
 ### 静态变量
 
-- ***static std::unordered_map<std::string, std::string> mime_types;
-  - 该变量提供从文件后缀到mime类型的映射
+- ***static const std::unordered_map<std::string, std::string> mime_types;
+  - 该变量提供从文件后缀到mime类型的映射（const 不可修改）
   - 提供了用户自配置的基础
 
 ### 目标路径处理
