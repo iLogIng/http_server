@@ -1,10 +1,12 @@
 #include "../includes/server.hpp"
 
+#include "../includes/logger.hpp"
+
 std::atomic<std::size_t> server_host::session::active_sessions_{0};
 
 // 错误处理
 void
-fail(beast::error_code ec, char const* what)
+fail(boost::beast::error_code ec, const char* what)
 {
     LOG_ERROR << what << ": " << ec.message() << "\n";
 }
@@ -46,15 +48,12 @@ run()
 void server_host::session::
 do_read()
 {
-    // 在读操作之前，先清空请求
-    // 否则以下操作就是未定义的
-    req_ = {};
+    // emplace 新的分析器（parser 为单次使用设计，官方推荐 stored in optional）
+    parser_.emplace();
+    parser_->body_limit(config_.max_body_size());
 
-    // 设定超时时长
-    stream_.expires_after(std::chrono::seconds(config_.timeout_seconds()));
-
-    // 读请求
-    http::async_read(stream_, buffer_, req_,
+    // 读请求（parser_ 内置 body_limit，超限时 async_read 返回 413）
+    http::async_read(stream_, buffer_, *parser_,
         beast::bind_front_handler(
             &session::on_read,
             shared_from_this()
@@ -81,7 +80,7 @@ on_read(
 
     // 发送响应
     send_response(
-        handler_->handle_request(req_)
+        handler_->handle_request(parser_->get())
     );
 }
 

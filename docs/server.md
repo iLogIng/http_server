@@ -7,6 +7,7 @@
 > 依赖:
 > ***Boost::Beast***
 > ***Boost::Asio***
+> ***boost::optional***
 > ***logger.hpp***
 > ***request_handler.hpp***
 >
@@ -43,7 +44,7 @@ flowchart TD
 - **session**
   > 管理连接
 
-### listener 类
+### session 类
 
 - ***using*** `std::shared_ptr<server_service::request_handler>` **request_handler_ptr**
 
@@ -55,8 +56,10 @@ flowchart TD
   - TCP连接流
 - `beast::flat_buffer` **buffer_**
   - 平坦的缓存区域
-- `http::request<http::string_body>` **req_**
-  - 客户端的请求报文
+- `boost::optional<http::request_parser<http::string_body>>` **parser_**
+  - 请求分析器（boost::optional 包裹，每次读前 emplace 新实例）
+  - 通过 `body_limit()` 在解析阶段即限制请求体大小，超出返回 413
+  - 该版本 Boost.Beast 的 parser 为单次使用设计，不可重置，故以 optional 存储
 - `const server_config::configuration&` **config_**
   - 服务器配置引用
 - `request_handler_ptr` **handler_**
@@ -70,10 +73,11 @@ flowchart TD
   > 开始异步处理
 
 - **do_read**
-  > 处理流读取
+  > 处理流读取：emplace 新 parser → 设置 body_limit → 异步读
+  > 解析阶段即拦截超大请求体，返回 413 而非耗尽内存
 
 - **on_read**
-  > 流读取
+  > 流读取回调：从 `parser_->get()` 获取解析后的请求，交给 handler 处理
   - **args**
     - `beast::error_code` **ec**
     - `std::size_t` **bytes_transferred**
@@ -84,7 +88,7 @@ flowchart TD
     - `http::message_generator&&` **msg**
 
 - **on_write**
-  > 写操作
+  > 写操作完成回调：根据 keep_alive 决定关闭连接或继续读下一请求
   - **args**
     - `bool` **keep_alive**
     - `beast::error_code` **ec**
@@ -93,15 +97,19 @@ flowchart TD
 - **do_close**
   > 关闭连接
 
+- **active_sessions** (static)
+  > 返回当前活跃的 HTTP 会话数（原子计数器）
+
 #### 构造函数
 
 目前仅包含唯一的构造函数
 
-- **(tcp::socket&& , request_handler_ptr)**
+- `session(tcp::socket&& socket, const server_config::configuration& config, request_handler_ptr handler)`
+  - 获取套接字所有权，活跃会话数 +1
 
 -----
 
-### session 类
+### listener 类
 
 - ***using*** `std::shared_ptr<server_service::request_handler>` **request_handler_ptr**
 
@@ -109,16 +117,16 @@ flowchart TD
 
 ##### private
 
-- `net::io_context` **ioc_**
+- `net::io_context&` **ioc_**
   - Asio异步上下文
 - `tcp::acceptor` **acceptor_**
   - 监听，接收器
-- `request_handler_ptr` **handler_**
-  - 请求处理对象的共享指针
 - `const server_config::configuration&` **config_**
   - 服务器配置引用
 - `request_handler_ptr` **handler_**
   - 请求处理对象的共享指针
+- `bool` **is_stopped_**
+  - 标记是否已停止接受新连接（优雅关闭用）
 
 #### 成员函数
 
@@ -138,8 +146,12 @@ flowchart TD
 - **run**
   > 开始进行监听网络端口
 
+- **stop**
+  > 停止接受新连接（设置 is_stopped_ = true 并关闭 acceptor）
+
 #### 构造函数
 
 目前仅包含唯一的构造函数
 
-- **(net::io_context& , tcp::endpoint , request_handler_ptr)**
+- `listener(net::io_context& ioc, tcp::endpoint endpoint, const server_config::configuration& config, request_handler_ptr handler)`
+  - 初始化 acceptor，设置地址复用、绑定、监听

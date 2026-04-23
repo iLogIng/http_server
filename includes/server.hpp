@@ -2,16 +2,16 @@
 
 #include <memory>
 #include <atomic>
+#include <boost/optional.hpp>
 #include <boost/asio.hpp>
 #include <boost/beast.hpp>
 
-#include "logger.hpp"
 #include "config.hpp"
 #include "request_handler.hpp"
 
 // 错误处理
 void
-fail(beast::error_code ec, char const* what);
+fail(boost::beast::error_code ec, const char* what);
 
 // 服务器主机，负责监听和处理连接请求
 namespace server_host
@@ -33,7 +33,7 @@ private:
 private:
     beast::tcp_stream stream_;                              // TCP 连接流
     beast::flat_buffer buffer_;                             // 平坦的缓存区域
-    http::request<http::string_body> req_;                  // 客户端请求报文
+    boost::optional<http::request_parser<http::string_body>> parser_;   // 请求分析器（含 body_limit），每次读前 emplace 新实例
     const server_config::configuration& config_;            // 配置文件
     request_handler_ptr handler_;                           // 请求处理器对象的共享指针
 
