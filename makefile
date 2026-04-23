@@ -21,17 +21,12 @@ $(TARGET): $(INCLUDES) $(SRCS)
 # $(CXX) $(CXXFLAGS) $^ -I$(BOOST_INCLUDE_DIR) -L$(BOOST_LIB_DIR) $(BOOST_LIBS_LINK) -o $@
 
 test:
-	$(MAKE) -C test
-
-logger.test: src/logger.hpp test/logger.test.cpp
-	$(CXX) $(CXXFLAGS) $^ $(BOOST_LIBS_LINK) -lgtest -lgtest_main -o ./test/exec/logger.test
-	./test/exec/logger.test
+	$(MAKE) -C test all-test-run
 
 # = = = = = = =
 
 .PHONY:
-	execute
-	clean
+	test clean clean-test execute
 
 execute:
 	@echo 'this server is running on 0.0.0.0:8080'
@@ -39,7 +34,7 @@ execute:
 	
 
 clean: clean-test
-	rm http_server
+	rm -f http_server
 
 clean-test:
-	rm ./test/exec/logger_test
+	$(MAKE) -C test clean-test
