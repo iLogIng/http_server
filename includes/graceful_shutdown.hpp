@@ -58,9 +58,6 @@ private:
     // 信号处理函数
     void on_signal(const boost::system::error_code& ec, int signal_number);
     
-    // 强制关闭超时处理函数
-    void on_force_timeout();
-
     // 停机函数
     void do_shutdown();
 

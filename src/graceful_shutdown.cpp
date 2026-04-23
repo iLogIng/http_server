@@ -115,18 +115,6 @@ check_active_sessions()
 
 void
 server_host::graceful_shutdown::
-on_force_timeout()
-{
-    LOG_WARNING << "Force shutdown timeout reached, stopping the server immediately.";
-    force_timer_.cancel();
-    check_timer_.cancel();
-    if (on_complete_) {
-        on_complete_();
-    }
-}
-
-void
-server_host::graceful_shutdown::
 force_stop()
 {
     LOG_WARNING << "Force shutdown invoked, stopping the server immediately.";
