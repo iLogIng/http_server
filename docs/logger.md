@@ -1,6 +1,6 @@
 # 日志模块
 
-> ***/src/logger.hpp***
+> ***/includes/logger.hpp***
 > ***日志类***
 >
 
@@ -9,7 +9,7 @@
 
 为该 http_server 项目提供日志处理能力。
 
-将日志信息存放在 `/logs` 目录下
+将日志信息存放到通过 `log_file` 参数指定的路径（默认 `./logs/http_server.log`），日志目录由该路径自动派生。
 
 ## 结构
 

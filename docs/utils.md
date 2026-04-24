@@ -1,6 +1,6 @@
 # 工具模块
 
-> ***/src/utils.hpp***
+> ***/includes/utils.hpp***
 > ***工具方法***
 >
 
@@ -35,7 +35,7 @@
 - **secure_file_cat(beast::string_view doc_root, beast::string_view target)**
   - 提供依赖 *boost::filesystem* 库的安全路径拼接功能，但使用boost::filesystem时，由于库接口设计的基础依赖，需要访问主机的文件系统，产生一定的开销，所以，在此之前的 *is_safe_path* 与 *path_cat* 方法所提供的轻量级路径处理方法仍有必要
 
-- **std::string path_cat(beast::string_view base, beast::string_veiw path)**
+- **std::string path_cat(beast::string_view base, beast::string_view path)**
   - 安全的将网站根目录与文件路径相连接，返回所处平台支持的路径字符串
 
 ### 响应报文生成

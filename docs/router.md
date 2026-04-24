@@ -24,8 +24,6 @@
 
 ### router 类
 
-- ***using*** `std::shared_ptr<server_service::request_handler>` **request_handler_ptr**
-
 #### 成员变量
 
 ##### private

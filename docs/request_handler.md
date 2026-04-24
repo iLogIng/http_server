@@ -62,5 +62,5 @@
 
 目前经包含唯一的构造函数
 
-- **(const server_config::configuration& config)**
-  > 传入一个配置类的引用常量，初始化组合的静态文件服务对象
+- **(router_ptr ptr, Handler default_handler)**
+  > 传入共享路由表和默认处理器
