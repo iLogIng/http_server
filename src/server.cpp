@@ -34,8 +34,6 @@ void
 server_host::session::
 run()
 {
-    // 虽然单线程环境并非严格必要，
-    // 但是本示例代码默认以线程安全的方式编写
     net::dispatch(stream_.get_executor(),
         [self = shared_from_this()] {
             self->do_read();

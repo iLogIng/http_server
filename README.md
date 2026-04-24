@@ -46,13 +46,19 @@
   - 工具模块
 - **static_file_service**
   - 静态文件服务模块
+- **router**
+  - 路由模块，管理精确路由与前缀路由匹配
 - **request_handler**
   - 请求处理模块
 - **server**
-  - 连接监听与管理模块
+  - 连接监听与管理模块，包含 listener 和 session
+- **graceful_shutdown**
+  - 优雅关闭模块，处理 SIGINT/SIGTERM 信号
 
 - ***test/***
-  - 测试单元
+  - Google Test 单元测试（覆盖 config、logger、router、utils 模块）
+
+**项目简图**
 
 ```mermaid
 graph TD
@@ -107,6 +113,8 @@ graph TD
     main -- 默认处理器 --> request_handler
 ```
 
+**核心结构简图**
+
 ```mermaid
 classDiagram
     direction TD
@@ -149,7 +157,7 @@ classDiagram
     class session {
         -beast::tcp_stream stream_
         -flat_buffer buffer_
-        -http::request req_
+        -boost::optional~request_parser~ parser_
         -const configuration& config_
         -request_handler_ptr handler_
         +session(socket, config, handler)
@@ -159,6 +167,7 @@ classDiagram
         -send_response(msg)
         -on_write(keep_alive, ec, bytes)
         -do_close()
+        +active_sessions() size_t
     }
 
     class listener {
@@ -207,7 +216,10 @@ classDiagram
 
 ## TODO
 
-1. 优雅关闭 + 请求大小限制 + 路径规范化
+1. [x] 优雅关闭 + 请求大小限制 + 路径规范化
+    - graceful_shutdown 模块：SIGINT/SIGTERM 信号处理
+    - body_limit() 在 async_read 解析阶段拦截大请求，返回 413
+    - is_safe_path() + weakly_canonical 双重路径穿越防护
 2. [x] 结构化日志 + 请求日志 **logger** 模块
     - 后期添加配置文件对日志进行灵活配置
     - 异步记录，避免日志I/O阻塞网路主进程
@@ -218,12 +230,12 @@ classDiagram
       - 控制台
       - 日志文件
     - 日志切分保证日志文件大小，避免过大的单个文件
-3. 动态路由（无中间件）
+3. [x] 动态路由（精确路由 + 前缀路由）
 4. [x] 配置文件支持 **config** 模块，实现基于JSON文件的功能配置
 5. Range 请求 + 缓存控制
 6. 统计接口（/metrics）
-7. 单元测试（使用Google Test 关键模块）
-8. 添加完整的 ***HTTP/1.1 + 并发 + 超时控制*** 功能
+7. [x] 单元测试（Google Test，覆盖 config、logger、router、utils 模块）
+8. [x] 添加完整的 ***HTTP/1.1 + 并发 + 超时控制*** 功能
 9. HTTPS 支持
 10. 增加C++20协程，HTTPS，高级网络特性
 
@@ -263,23 +275,49 @@ $ make
 
 ```text
 .
-├── CMakeLists.txt
-├── docs
-│   └── logger.md
-├── index.html
-├── logs
-│   └── http_server.log
-├── makefile
-├── README.md
-├── src
-│   ├── logger.hpp
-│   ├── main.cpp
-│   ├── request_handler.hpp
-│   ├── router.hpp
-│   ├── server.hpp
-│   └── utils.hpp
-└── test
-     └── test.cpp
+├── CMakeLists.txt          # 顶层 CMake 构建文件
+├── config.json             # 服务器配置文件
+├── makefile                # 顶层 Makefile
+├── README.md               # 本文件
+├── TODO.md                 # 功能扩展清单
+├── app/
+│   └── index.html          # 测试用静态页面
+├── docs/
+│   ├── CONTENTS.md         # 文档目录
+│   ├── config.md
+│   ├── graceful_shutdown.md
+│   ├── logger.md
+│   ├── request_handler.md
+│   ├── router.md
+│   ├── server.md
+│   ├── static_file_service.md
+│   └── utils.md
+├── includes/
+│   ├── config.hpp
+│   ├── graceful_shutdown.hpp
+│   ├── logger.hpp
+│   ├── request_handler.hpp
+│   ├── router.hpp
+│   ├── server.hpp
+│   ├── static_file_service.hpp
+│   └── utils.hpp
+├── src/
+│   ├── CMakeLists.txt
+│   ├── config.cpp
+│   ├── graceful_shutdown.cpp
+│   ├── main.cpp
+│   ├── request_handler.cpp
+│   ├── router.cpp
+│   ├── server.cpp
+│   ├── static_file_service.cpp
+│   └── utils.cpp
+└── test/
+    ├── CMakeLists.txt
+    ├── makefile
+    ├── test_config.cpp
+    ├── test_logger.cpp
+    ├── test_router.cpp
+    └── test_utils.cpp
 ```
 
 ## 压力测试

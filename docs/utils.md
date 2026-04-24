@@ -9,9 +9,7 @@
 > ***<unordered_map>***
 >
 
-为该 http_server 项目提供日志处理能力。
-
-将日志信息存放在 `/logs` 目录下
+为该 http_server 项目提供通用工具函数，包括 MIME 类型映射、路径安全处理、响应报文生成等功能。
 
 ## 结构
 
@@ -40,20 +38,14 @@
 - **std::string path_cat(beast::string_view base, beast::string_veiw path)**
   - 安全的将网站根目录与文件路径相连接，返回所处平台支持的路径字符串
 
-### 响应码集成
+### 响应报文生成
 
-- ***400 Bad Request***
-  - *make_bad_request*
-
-- ***404 Not Found***
-  - *make_not_found*
-
-- ***405 Method Not Allowed***
-  - *make_method_not_allowed*
-
-- ***413 Payload Too Large***
-  - *make payload_too_large*
-  
-- ***500 Internal Server Error***
-  - *make_server_error*
+|HTTP 状态码|函数|用途|
+|:---:|:---:|:---:|
+|**400**|*make_bad_request*|错误请求|
+|**404**|*make_not_found*|资源未找到|
+|**405**|*make_method_not_allowed*|方法不允许|
+|**413**|*make_payload_too_large*|请求体过大|
+|**500**|*make_server_error*|服务器内部错误|
+|通用|*make_error_response*|生成任意状态码的简单 HTML 响应|
 
