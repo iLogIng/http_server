@@ -44,6 +44,8 @@ run()
 void server_host::session::
 do_read()
 {
+    stream_.expires_after(std::chrono::seconds(config_.timeout_seconds()));
+
     // emplace 新的分析器（parser 为单次使用设计，官方推荐 stored in optional）
     parser_.emplace();
     parser_->body_limit(config_.max_body_size());
@@ -68,6 +70,12 @@ on_read(
     if(ec == http::error::end_of_stream)
         return do_close();
 
+    if(ec == beast::error::timeout)
+    {
+        LOG_WARNING << "Request timed out";
+        return do_close();
+    }
+
     if(ec)
     {
         return fail(ec, "read");
@@ -87,7 +95,7 @@ void
 server_host::session::
 send_response(http::message_generator&& msg)
 {
-    // 获取持续连接字段值
+    stream_.expires_after(std::chrono::seconds(config_.timeout_seconds()));
     bool keep_alive = msg.keep_alive();
 
     // 写回响应
@@ -110,6 +118,12 @@ on_write(
     std::size_t bytes_transferred)
 {
     boost::ignore_unused(bytes_transferred);
+
+    if(ec == beast::error::timeout)
+    {
+        LOG_WARNING << "Write timed out";
+        return do_close();
+    }
 
     if(ec)
         return fail(ec, "write");

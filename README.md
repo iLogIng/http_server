@@ -242,6 +242,8 @@ classDiagram
 6. 统计接口（/metrics）
 7. [x] 单元测试（Google Test，57 用例覆盖 config、logger、router、utils、集成测试）
 8. [x] 添加完整的 ***HTTP/1.1 + 并发 + 超时控制*** 功能
+    - session 读写均设置 `stream_.expires_after()`，超时自动断开连接
+    - 超时时间通过 `--timeout_seconds` / JSON `timeout_seconds` 配置（默认 30s）
 9. HTTPS 支持
 10. 增加C++20协程，HTTPS，高级网络特性
 

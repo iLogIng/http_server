@@ -73,22 +73,25 @@ flowchart TD
   > 开始异步处理
 
 - **do_read**
-  > 处理流读取：emplace 新 parser → 设置 body_limit → 异步读
+  > 处理流读取：设置 stream 超时 → emplace 新 parser → 设置 body_limit → 异步读
   > 解析阶段即拦截超大请求体，返回 413 而非耗尽内存
+  > 超时后 `on_read` 收到 `beast::error::timeout`，记录警告并关闭连接
 
 - **on_read**
   > 流读取回调：从 `parser_->get()` 获取解析后的请求，交给 handler 处理
+  > 收到 `beast::error::timeout` 时记录警告并关闭连接
   - **args**
     - `beast::error_code` **ec**
     - `std::size_t` **bytes_transferred**
 
 - **send_response**
-  > 发回响应
+  > 发回响应（设置 stream 写超时后异步写）
   - **args**
     - `http::message_generator&&` **msg**
 
 - **on_write**
   > 写操作完成回调：根据 keep_alive 决定关闭连接或继续读下一请求
+  > 收到 `beast::error::timeout` 时记录警告并关闭连接
   - **args**
     - `bool` **keep_alive**
     - `beast::error_code` **ec**
