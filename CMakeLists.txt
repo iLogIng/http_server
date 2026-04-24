@@ -7,8 +7,10 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+option(BUILD_TESTING "Build unit tests" ON)
+
 # 查找 Boost 库依赖
-find_package(Boost CONFIG COMPONENTS 
+find_package(Boost CONFIG COMPONENTS
     system
     thread
     filesystem
@@ -20,6 +22,5 @@ find_package(Boost CONFIG COMPONENTS
 
 add_subdirectory(src)
 if(BUILD_TESTING)
-    enable_testing()
     add_subdirectory(test)
 endif()
