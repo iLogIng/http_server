@@ -44,6 +44,13 @@ test_router: test_router.cpp $(SRC_ROUTER) | $(EXEC_DIR)
 test_config: test_config.cpp $(SRC_CONFIG) | $(EXEC_DIR)
 	$(CXX) $(CXXFLAGS) $^ $(BOOST_LIBS) $(GTEST_LIBS) -o $(EXEC_DIR)/$@
 
+# integration (端到端，需要已构建的 http_server)
+test_integration: test_integration.cpp | $(EXEC_DIR)
+	$(CXX) $(CXXFLAGS) \
+	    -DSERVER_BINARY=\"../http_server\" \
+	    -DDOC_ROOT=\"../app\" \
+	    $< $(BOOST_LIBS) $(GTEST_LIBS) -o $(EXEC_DIR)/$@
+
 # ============================================================
 # 运行单个测试（构建 + 执行）
 # ============================================================
@@ -66,7 +73,7 @@ test_config.run: test_config
 
 .PHONY: all-test all-test-run clean-test
 
-all-test: test_logger test_utils test_router test_config
+all-test: test_logger test_utils test_router test_config test_integration
 
 all-test-run: all-test
 	@echo "=== Running all tests ==="
@@ -74,6 +81,7 @@ all-test-run: all-test
 	@$(EXEC_DIR)/test_utils
 	@$(EXEC_DIR)/test_router
 	@$(EXEC_DIR)/test_config
+	@$(EXEC_DIR)/test_integration
 	@echo "=== All tests passed ==="
 
 clean-test:
@@ -81,3 +89,4 @@ clean-test:
 	rm -f $(EXEC_DIR)/test_utils
 	rm -f $(EXEC_DIR)/test_router
 	rm -f $(EXEC_DIR)/test_config
+	rm -f $(EXEC_DIR)/test_integration

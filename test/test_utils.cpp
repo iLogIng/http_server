@@ -80,21 +80,21 @@ TEST(UtilsPathCatTest, NoLeadingSlashInPath)
 }
 
 // ============================================================
-// secure_file_cath  — 依赖文件系统，相对 CWD
+// secure_file_cat  — 依赖文件系统，相对 CWD
 // 默认从项目根目录运行，此时 app/ 存在，/nonexistent_test_dir 不存在
 // ============================================================
 
 TEST(UtilsSecureFileCatTest, UnsafeTargetReturnsEmpty)
 {
-    EXPECT_EQ(secure_file_cath(".", "/../etc/passwd"), "");
-    EXPECT_EQ(secure_file_cath(".", "/.."), "");
-    EXPECT_EQ(secure_file_cath(".", ""), "");
+    EXPECT_EQ(secure_file_cat(".", "/../etc/passwd"), "");
+    EXPECT_EQ(secure_file_cat(".", "/.."), "");
+    EXPECT_EQ(secure_file_cat(".", ""), "");
 }
 
 TEST(UtilsSecureFileCatTest, NonexistentDocRootReturnsEmpty)
 {
     // doc_root 目录不存在时返回空
-    EXPECT_EQ(secure_file_cath("/nonexistent_test_dir_12345", "/index.html"), "");
+    EXPECT_EQ(secure_file_cat("/nonexistent_test_dir_12345", "/index.html"), "");
 }
 
 // ============================================================

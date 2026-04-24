@@ -1,6 +1,10 @@
 #include <gtest/gtest.h>
 #include <string>
 #include <cstring>
+#include <fstream>
+#include <cstdio>
+#include <unistd.h>
+
 #include "../includes/config.hpp"
 
 using namespace server_config;
@@ -63,7 +67,6 @@ TEST(ConfigValidTest, Threads)
 TEST(ConfigValidTest, ThreadsBoundary)
 {
     EXPECT_FALSE(valid_threads(0));
-    // 上限是 hardware_concurrency * 2，不在此处断言具体值，仅验证正数通过
 }
 
 TEST(ConfigValidTest, Timeout)
@@ -90,38 +93,10 @@ TEST(ConfigValidTest, MaxBodySizeBoundary)
 }
 
 // ============================================================
-// configuration 构造函数
-// 注意：构造函数内部会尝试读取 config.json，若不存在则 catch 异常并继续
+// 命令行参数测试，无 JSON 依赖
 // ============================================================
 
-class ConfigConstructorTest : public ::testing::Test
-{
-protected:
-    void TearDown() override
-    {
-        // 清除 get_normalized_doc_root 缓存的副作用
-        // 下次构造 config 时会重新加载 config.json
-    }
-};
-
-// 当项目根目录存在 config.json 时，构造函数会先加载它，再叠加命令行参数
-// 以下测试验证 JSON 中的值被正确读取（而非纯默认值）
-TEST_F(ConfigConstructorTest, ConfigFileLoadedWithDefaults)
-{
-    const char* argv[] = {"http_server"};
-    int argc = 1;
-
-    configuration cfg(argc, const_cast<char**>(argv));
-
-    // 以下值来源于项目根目录的 config.json
-    EXPECT_EQ(cfg.port(), 8080);
-    EXPECT_EQ(cfg.address(), "0.0.0.0");
-    // doc_root 和 max_body_size 会被 config.json 覆盖：
-    EXPECT_EQ(cfg.doc_root(), "./app/");
-    EXPECT_EQ(cfg.max_body_size(), 10485760u);
-}
-
-TEST_F(ConfigConstructorTest, CommandLineOverridesDefault)
+TEST(ConfigCommandLineTest, FullCommandLine)
 {
     const char* argv[] = {
         "http_server",
@@ -144,7 +119,7 @@ TEST_F(ConfigConstructorTest, CommandLineOverridesDefault)
     EXPECT_EQ(cfg.doc_root(), "/tmp");
 }
 
-TEST_F(ConfigConstructorTest, PartialCommandLineOverride)
+TEST(ConfigCommandLineTest, PartialCommandLine)
 {
     const char* argv[] = {
         "http_server",
@@ -154,11 +129,113 @@ TEST_F(ConfigConstructorTest, PartialCommandLineOverride)
 
     configuration cfg(argc, const_cast<char**>(argv));
 
-    // port 被覆盖，其余保持默认
     EXPECT_EQ(cfg.port(), 9090);
     EXPECT_EQ(cfg.address(), "0.0.0.0");
     EXPECT_EQ(cfg.threads(), 1);
 }
 
-// 注：JSON 配置文件测试需要在 CWD 存在 config.json 时才能验证覆盖逻辑。
-// 由于测试环境不确定，此处仅测试命令行层和默认值层。
+// ============================================================
+// TempConfigTest — 通过 --config 加载 JSON 配置文件
+// ============================================================
+
+class TempConfigTest : public ::testing::Test
+{
+protected:
+    std::string temp_config_;
+
+    void SetUp() override
+    {
+        char tmp[] = "/tmp/test_config_XXXXXX";
+        int fd = mkstemp(tmp);
+        if (fd != -1) {
+            close(fd);
+            temp_config_ = tmp;
+        }
+    }
+
+    void TearDown() override
+    {
+        if (!temp_config_.empty()) {
+            std::remove(temp_config_.c_str());
+        }
+    }
+
+    std::string write_config(const std::string& content)
+    {
+        std::ofstream ofs(temp_config_);
+        ofs << content;
+        return temp_config_;
+    }
+};
+
+TEST_F(TempConfigTest, JsonConfigLoaded)
+{
+    auto cfg_path = write_config(R"({
+        "address": "192.168.1.1",
+        "port": 3000,
+        "doc_root": "/tmp",
+        "threads": 2,
+        "timeout_seconds": 60,
+        "max_body_size": 2097152
+    })");
+
+    const char* argv[] = {"http_server", "--config", cfg_path.c_str()};
+    int argc = 3;
+    configuration cfg(argc, const_cast<char**>(argv));
+
+    EXPECT_EQ(cfg.address(), "192.168.1.1");
+    EXPECT_EQ(cfg.port(), 3000);
+    EXPECT_EQ(cfg.doc_root(), "/tmp");
+    EXPECT_EQ(cfg.threads(), 2);
+    EXPECT_EQ(cfg.timeout_seconds(), 60);
+    EXPECT_EQ(cfg.max_body_size(), 2097152u);
+}
+
+TEST_F(TempConfigTest, CommandLineOverridesJson)
+{
+    auto cfg_path = write_config(R"({
+        "port": 3000,
+        "doc_root": "/tmp"
+    })");
+
+    const char* argv[] = {
+        "http_server", "--config", cfg_path.c_str(),
+        "--port", "9090"
+    };
+    int argc = 5;
+    configuration cfg(argc, const_cast<char**>(argv));
+
+    EXPECT_EQ(cfg.port(), 9090);
+    EXPECT_EQ(cfg.doc_root(), "/tmp");
+    EXPECT_EQ(cfg.address(), "0.0.0.0");
+}
+
+TEST_F(TempConfigTest, PartialJsonKeepsDefaults)
+{
+    auto cfg_path = write_config(R"({
+        "port": 8080
+    })");
+
+    const char* argv[] = {"http_server", "--config", cfg_path.c_str()};
+    int argc = 3;
+    configuration cfg(argc, const_cast<char**>(argv));
+
+    EXPECT_EQ(cfg.port(), 8080);
+    EXPECT_EQ(cfg.address(), "0.0.0.0");
+    EXPECT_EQ(cfg.threads(), 1);
+}
+
+TEST_F(TempConfigTest, InvalidValuesFallbackToDefaults)
+{
+    auto cfg_path = write_config(R"({
+        "port": 0,
+        "threads": 0
+    })");
+
+    const char* argv[] = {"http_server", "--config", cfg_path.c_str()};
+    int argc = 3;
+    configuration cfg(argc, const_cast<char**>(argv));
+
+    EXPECT_EQ(cfg.port(), 8080);
+    EXPECT_EQ(cfg.threads(), 1);
+}
