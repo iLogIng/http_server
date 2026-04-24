@@ -23,11 +23,17 @@
     - **Filesystem**
     - **JSON**
     - **Log**
+    - **Program Options**
+    - **Thread**
 
 ## 功能特性 Features
 
-> 实现 HTTP/1.1 异步并发 超时控制
->
+> 实现 HTTP/1.1 异步并发 超时控制 路由分发 静态文件服务
+> 配置系统（JSON + 命令行） 结构化日志（控制台 + 文件轮转）
+> 请求日志（方法 + 路径 + 耗时） 优雅关闭 路径穿越防护
+> Google Test 单元测试 + 端到端集成测试（57 用例全通过）
+
+## 项目结构
 
 ## 项目结构
 
@@ -56,7 +62,7 @@
   - 优雅关闭模块，处理 SIGINT/SIGTERM 信号
 
 - ***test/***
-  - Google Test 单元测试（覆盖 config、logger、router、utils 模块）
+  - Google Test 单元测试（57 用例覆盖 config、logger、router、utils、集成测试模块）
 
 **项目简图**
 
@@ -123,6 +129,7 @@ classDiagram
         +address()
         +port()
         +doc_root()
+        +log_file()
         +threads()
         +timeout_seconds()
         +max_body_size()
@@ -220,21 +227,20 @@ classDiagram
     - graceful_shutdown 模块：SIGINT/SIGTERM 信号处理
     - body_limit() 在 async_read 解析阶段拦截大请求，返回 413
     - is_safe_path() + weakly_canonical 双重路径穿越防护
-2. [x] 结构化日志 + 请求日志 **logger** 模块
-    - 后期添加配置文件对日志进行灵活配置
+2. [x] 结构化日志 + 请求日志 + 可配置路径 **logger** 模块
     - 异步记录，避免日志I/O阻塞网路主进程
-    - 日志级别
-    - 多线程安全支持
-    - 结构化的日志输出
-    - 多目标输出（Sink）
-      - 控制台
-      - 日志文件
-    - 日志切分保证日志文件大小，避免过大的单个文件
+    - 日志级别（trace ~ fatal）
+    - 多目标输出（控制台 + 轮转文件）
+    - 每条请求记录方法、路径、耗时
+    - 日志路径可通过 `--log_file` / JSON `log_file` 配置
 3. [x] 动态路由（精确路由 + 前缀路由）
-4. [x] 配置文件支持 **config** 模块，实现基于JSON文件的功能配置
+4. [x] 配置文件支持 **config** 模块
+    - JSON 文件解析 + 命令行参数 + 默认值三层覆盖
+    - `--config` 指定 JSON 路径
+    - 全字段类型校验
 5. Range 请求 + 缓存控制
 6. 统计接口（/metrics）
-7. [x] 单元测试（Google Test，覆盖 config、logger、router、utils 模块）
+7. [x] 单元测试（Google Test，57 用例覆盖 config、logger、router、utils、集成测试）
 8. [x] 添加完整的 ***HTTP/1.1 + 并发 + 超时控制*** 功能
 9. HTTPS 支持
 10. 增加C++20协程，HTTPS，高级网络特性
@@ -254,10 +260,17 @@ $ make http_server
 $ make
 ```
 
+**启动参数**
+
+可通过命令行参数或 JSON 配置文件配置服务器，优先级：**命令行 > JSON > 默认值**
+
+```bash
+$ ./http_server --port 8080 --doc_root ./app/ --threads 4 --log_file ./logs/app.log
+```
+
 **配置文件**
 
-> 配置文件需放于项目根目录
-> 并命名为 `config.json`
+> 默认查找 CWD 下的 `config.json`，可通过 `--config` 指定路径
 >
 
 ```json
@@ -267,7 +280,8 @@ $ make
     "doc_root":"./app/",
     "threads":1,
     "timeout_seconds":30,
-    "max_body_size":10485760
+    "max_body_size":10485760,
+    "log_file":"./logs/http_server.log"
 }
 ```
 
@@ -315,6 +329,7 @@ $ make
     ├── CMakeLists.txt
     ├── makefile
     ├── test_config.cpp
+    ├── test_integration.cpp
     ├── test_logger.cpp
     ├── test_router.cpp
     └── test_utils.cpp
