@@ -4,7 +4,6 @@
 #include <thread>
 #include <unordered_map>
 
-using namespace server_utils;
 
 static const std::unordered_map<std::string, std::string>
 mime_types = {
@@ -31,10 +30,7 @@ mime_types = {
     {".svgz", "image/svg+xml"}
 };
 
-// 以文件扩展名为基础返回mime类型
-// 目前是写死的状态，后续可以通过配置文件或环境变量进行调整，以适应不同的部署环境和需求
-// 预计通过集成JSON配置文件来实现更灵活的mime类型映射，以便用户可以根据需要添加或修改mime类型，而无需修改代码
-beast::string_view
+server_utils::beast::string_view
 server_utils::
 mime_type(beast::string_view path)
 {
@@ -55,7 +51,7 @@ mime_type(beast::string_view path)
     return "application/text";
 }
 
-// 防止路径遍历攻击，确保请求路径安全
+// 防止路径穿越
 bool
 server_utils::
 is_safe_path(beast::string_view path)
@@ -79,11 +75,7 @@ is_safe_path(beast::string_view path)
     return true;
 }
 
-// 安全的文件路径连接方法，返回该平台支持的路径字符串
-// 发往网站的资源请求，仅可见网站根目录，但是在服务器主机上，网站根目录是存在于某一个路径之下的
-// 所以需要进行拼接
-// base 一般为网站根目录
-// path 一般为资源目标位置，（相对于网站根目录）
+// 拼接网站根目录与请求目标路径
 std::string
 server_utils::
 path_cat(
@@ -122,7 +114,7 @@ path_cat(
     return result;
 }
 
-// 提供根目录缓存功能，减少检查次数
+// 规范化根目录路径，缓存上次结果减少文件系统访问
 const std::string
 server_utils::
 get_normalized_doc_root(const std::string& raw_root)
@@ -155,13 +147,10 @@ get_normalized_doc_root(const std::string& raw_root)
     return cached_root;
 }
 
-// 安全的拼接路径，依赖boost::filesystem库，返回平台支持的路径字符串
-// 但是，使用boost::filesystem库进行路径拼接和规范化需要访问主机的文件系统，带来一定的开销，
-// 因此，在此之前定义的is_safe_path与path_cat方法仍然必要，以提供一种更轻量级的路径处理方式，
-// 适用于大多数常见的请求场景，而secure_file_cat方法则作为一种更安全但可能更慢的选项，适用于需要更严格安全保障的场景。
+// 安全拼接路径（boost::filesystem），双重防护：轻量检查 + 文件系统规范化
 std::string
 server_utils::
-secure_file_cath(
+secure_file_cat(
     beast::string_view doc_root,
     beast::string_view target
 )
@@ -199,8 +188,7 @@ secure_file_cath(
 }
 
 
-// 生成 400 Bad Request 响应
-http::response<http::string_body>
+server_utils::http::response<server_utils::http::string_body>
 server_utils::
 make_bad_request(
     const http::request<http::string_body>& req,
@@ -216,8 +204,7 @@ make_bad_request(
     return res;
 }
 
-// 生成 404 Not Found 响应
-http::response<http::string_body>
+server_utils::http::response<server_utils::http::string_body>
 server_utils::
 make_not_found(
     const http::request<http::string_body>& req,
@@ -233,8 +220,7 @@ make_not_found(
     return res;
 }
 
-// 生成 405 Method Not Allowed
-http::response<http::string_body>
+server_utils::http::response<server_utils::http::string_body>
 server_utils::
 make_method_not_allowed(
     const http::request<http::string_body>& req,
@@ -250,8 +236,7 @@ make_method_not_allowed(
     return res;
 }
 
-// 生成 413 Payload Too Large 响应
-http::response<http::string_body>
+server_utils::http::response<server_utils::http::string_body>
 server_utils::
 make_payload_too_large(
     const http::request<http::string_body>& req,
@@ -267,8 +252,7 @@ make_payload_too_large(
     return res;
 }
 
-// 生成 500 Internal Server Error 响应
-http::response<http::string_body>
+server_utils::http::response<server_utils::http::string_body>
 server_utils::
 make_server_error(
     const http::request<http::string_body>& req,
@@ -280,6 +264,22 @@ make_server_error(
     res.keep_alive(req.keep_alive());
     res.body() = "An Error Occurred: '" + std::string(what) + "'";
     LOG_ERROR << "Internal Server Error: '" << what << "'";
+    res.prepare_payload();
+    return res;
+}
+
+server_utils::http::response<server_utils::http::string_body>
+server_utils::
+make_error_response(
+    http::status status,
+    unsigned version,
+    bool keep_alive,
+    beast::string_view body)
+{
+    http::response<http::string_body> res{status, version};
+    res.set(http::field::content_type, "text/html");
+    res.keep_alive(keep_alive);
+    res.body() = std::string(body);
     res.prepare_payload();
     return res;
 }

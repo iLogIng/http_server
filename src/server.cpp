@@ -4,8 +4,8 @@
 
 std::atomic<std::size_t> server_host::session::active_sessions_{0};
 
-// 错误处理
 void
+server_host::
 fail(boost::beast::error_code ec, const char* what)
 {
     LOG_ERROR << what << ": " << ec.message() << "\n";
@@ -29,7 +29,6 @@ server_host::session::
     --active_sessions_;
 }
 
-// 开始异步操作
 void
 server_host::session::
 run()
@@ -42,7 +41,6 @@ run()
     // strand 串行执行链，用于保证回调函数不会并发的执行
 }
 
-// 读操作
 void server_host::session::
 do_read()
 {
@@ -59,7 +57,6 @@ do_read()
     );
 }
 
-// 读操作
 void server_host::session::
 on_read(
     beast::error_code ec,
@@ -76,13 +73,16 @@ on_read(
         return fail(ec, "read");
     }
 
+    auto& req = parser_->get();
+    req_info_ = std::string(req.method_string()) + " " + std::string(req.target());
+    req_start_time_ = std::chrono::steady_clock::now();
+
     // 发送响应
     send_response(
         handler_->handle_request(parser_->get())
     );
 }
 
-// 发送响应
 void
 server_host::session::
 send_response(http::message_generator&& msg)
@@ -102,7 +102,6 @@ send_response(http::message_generator&& msg)
     );
 }
 
-// 写操作
 void
 server_host::session::
 on_write(
@@ -115,6 +114,10 @@ on_write(
     if(ec)
         return fail(ec, "write");
 
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now() - req_start_time_).count();
+    LOG_INFO << req_info_ << " " << elapsed << "ms";
+
     // 若不为保持连接
     if(! keep_alive)
     {
@@ -126,7 +129,6 @@ on_write(
     do_read();
 }
 
-// 关闭操作
 void
 server_host::session::
 do_close()
@@ -189,7 +191,6 @@ listener(
     }
 }
 
-// 开始监听接入连接
 void
 server_host::listener::
 run()
@@ -197,7 +198,6 @@ run()
     do_accept();
 }
 
-// 进行监听
 void
 server_host::listener::
 do_accept()

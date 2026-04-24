@@ -8,7 +8,7 @@ const std::string& server_config::configuration::
 address() const
 { return config_vals_.address_; }
 
-const unsigned short& server_config::configuration::
+unsigned short server_config::configuration::
 port() const
 { return config_vals_.port_; }
 
@@ -16,15 +16,19 @@ const std::string& server_config::configuration::
 doc_root() const
 { return config_vals_.doc_root_; }
 
-const unsigned int& server_config::configuration::
+const std::string& server_config::configuration::
+log_file() const
+{ return config_vals_.log_file_; }
+
+unsigned int server_config::configuration::
 threads() const
 { return config_vals_.threads_; }
 
-const unsigned int& server_config::configuration::
+unsigned int server_config::configuration::
 timeout_seconds() const
 { return config_vals_.timeout_seconds_; }
 
-const size_t& server_config::configuration::
+size_t server_config::configuration::
 max_body_size() const
 { return config_vals_.max_body_size_; }
 
@@ -77,9 +81,11 @@ apply_command_line(int argc, char *argv[])
     prog_opts::options_description desc("Allowed options");
     desc.add_options()
         ("help,h",              "Show help message")
+        ("config,c", prog_opts::value<std::string>(), "Path to JSON config file")
         ("address,a", prog_opts::value<std::string>(), "Server address")
         ("port,p", prog_opts::value<unsigned short>(), "Server port")
         ("doc_root,r", prog_opts::value<std::string>(), "Document root")
+        ("log_file,l", prog_opts::value<std::string>(), "Log file path")
         ("threads,t", prog_opts::value<unsigned int>(), "Number of threads")
         ("timeout_seconds,s", prog_opts::value<unsigned int>(), "Timeout in seconds")
         ("max_body_size,b", prog_opts::value<size_t>(), "Maximum body size");
@@ -99,12 +105,17 @@ apply_command_line(int argc, char *argv[])
         std::exit(EXIT_SUCCESS);
     }
     
+    if(vm.count("config"))
+        this->config_vals_.config_path_ = vm["config"].as<std::string>();
+
     if(vm.count("address"))
         this->config_vals_.address_ = vm["address"].as<std::string>();
     if(vm.count("port"))
         this->config_vals_.port_ = vm["port"].as<unsigned short>();
     if(vm.count("doc_root"))
         this->config_vals_.doc_root_ = vm["doc_root"].as<std::string>();
+    if(vm.count("log_file"))
+        this->config_vals_.log_file_ = vm["log_file"].as<std::string>();
     if(vm.count("threads"))
         this->config_vals_.threads_ = vm["threads"].as<unsigned int>();
     if(vm.count("timeout_seconds"))
@@ -139,6 +150,9 @@ apply_json_config(std::string path)
     }
     else {
         LOG_WARNING << "Document Root Not Found or Invalid in JSON config.";
+    }
+    if (json_values.contains("log_file") && json_values.at("log_file").is_string()) {
+        this->config_vals_.log_file_ = std::string(json_values.at("log_file").as_string());
     }
 
     if (json_values.contains("port") && json_values.at("port").is_number()) {
@@ -183,22 +197,48 @@ apply_json_config(std::string path)
 
 }
 
-// 采用优先级覆盖的方法处理传入/配置的参数
-//      我认为关于json的解析可以承接该部分的设计
-// p1. command line
-// p2. json config
-// p3. default value
-// 所以最终的配置可能是以上三种杂合的结果，需要编写配置回显功能
+// 配置加载：命令行 > JSON > 默认值
 server_config::configuration::
 configuration(int argc, char *argv[])
 {
     this->config_vals_ = config_values{};
+
+    // 预解析 --config，确定配置文件路径
+    bool config_explicit = false;
+    {
+        prog_opts::options_description cfg_opt("Configuration file option");
+        cfg_opt.add_options()
+            ("config,c", prog_opts::value<std::string>(), "Path to JSON config file");
+        prog_opts::variables_map vm;
+        try {
+            prog_opts::store(
+                prog_opts::command_line_parser(argc, argv)
+                    .options(cfg_opt).allow_unregistered().run(),
+                vm);
+            prog_opts::notify(vm);
+        } catch (const prog_opts::error&) { }
+        if (vm.count("config")) {
+            this->config_vals_.config_path_ = vm["config"].as<std::string>();
+            config_explicit = true;
+        }
+    }
+
+    // 加载 JSON 配置
     try {
-        apply_json_config("config.json");
+        apply_json_config(this->config_vals_.config_path_);
     }
     catch(std::exception &e) {
-        LOG_WARNING << "Faild to load JSON config: " << e.what() << ". Using defaults and command line.";
+        if (config_explicit) {
+            LOG_FATAL << "Failed to load specified config file '"
+                      << this->config_vals_.config_path_ << "': " << e.what();
+            std::exit(EXIT_FAILURE);
+        }
+        LOG_WARNING << "Failed to load default config file '"
+                    << this->config_vals_.config_path_ << "': " << e.what()
+                    << ". Using defaults and command line.";
     }
+
+    // 命令行参数覆盖 JSON
     apply_command_line(argc, argv);
     this->dump();
 }
@@ -206,9 +246,11 @@ configuration(int argc, char *argv[])
 void
 server_config::configuration::
 dump() const {
+    LOG_INFO << "Config File:     " << config_vals_.config_path_;
     LOG_INFO << "Address:         " << config_vals_.address_;
     LOG_INFO << "Port:            " << config_vals_.port_;
     LOG_INFO << "Document Root:   " << config_vals_.doc_root_;
+    LOG_INFO << "Log File:        " << config_vals_.log_file_;
     LOG_INFO << "Threads:         " << config_vals_.threads_;
     LOG_INFO << "Timeout (sec):   " << config_vals_.timeout_seconds_;
     LOG_INFO << "Max Body Size:   " << config_vals_.max_body_size_ << " bytes";

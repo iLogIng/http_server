@@ -111,12 +111,12 @@ server_service::static_file_service::handle_request(
         return server_utils::make_bad_request(req, "Illegal request-target");
     }
 
-    std::string full_path = server_utils::secure_file_cath(this->config_.doc_root(), req.target());
+    std::string full_path = server_utils::secure_file_cat(this->config_.doc_root(), req.target());
     if (full_path.empty()) {
         return server_utils::make_bad_request(req, req.target());
     }
     if (req.target().back() == '/') {
-        full_path = server_utils::secure_file_cath(full_path, "index.html");
+        full_path = server_utils::secure_file_cat(full_path, "index.html");
         if (full_path.empty()) {
             return server_utils::make_bad_request(req, req.target());
         }

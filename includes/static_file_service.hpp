@@ -25,24 +25,19 @@ public:
 
     const server_config::configuration& config() const { return config_; }
 
-    // 类型擦除，返回一个http::message_generator，允许在不暴露具体类型的情况下生成HTTP响应
-    // 隐藏内部请求的分析与响应的构建
     http::message_generator handle_request(
         const http::request<http::string_body>& req
     ) const;
 
-    // 使用 server_service::Handler 包装静态文件处理模块
     Handler as_handler() const;
 
 private:
 
-    // 处理 GET 请求
     http::message_generator handle_GET_request(
         const http::request<http::string_body>& req,
         beast::string_view full_path
     ) const;
 
-    // 处理 HEAD 请求
     http::message_generator handle_HEAD_request(
         const http::request<http::string_body>& req,
         beast::string_view full_path

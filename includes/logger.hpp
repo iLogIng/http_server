@@ -13,6 +13,9 @@
 #include <boost/core/null_deleter.hpp>
 #include <boost/filesystem.hpp>
 
+// 将boost::filesystem的依赖替换为标准库的std::filesystem
+// #include <filesystem>
+
 namespace server_logger
 {
     namespace logging = boost::log;
@@ -50,9 +53,9 @@ inline void
 init_logger(const std::string& log_file = "./logs/http_server.log") {
     using namespace server_logger;
     // 确保日志目录存在
-    // 目前是写死的状态，后续可以通过配置文件或环境变量进行调整，以适应不同的部署环境和需求
-    boost::filesystem::path log_dir("./logs");
-    if (!boost::filesystem::exists(log_dir))
+    boost::filesystem::path log_path(log_file);
+    boost::filesystem::path log_dir = log_path.parent_path();
+    if (!log_dir.empty() && !boost::filesystem::exists(log_dir))
     {
         boost::filesystem::create_directories(log_dir);
     }

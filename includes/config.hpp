@@ -4,6 +4,7 @@
 #include <boost/json.hpp>
 
 #include <string>
+#include <vector>
 
 // 服务器配置参数
 namespace server_config
@@ -16,9 +17,11 @@ namespace prog_opts = boost::program_options;
 // 配置参数结构体
 struct config_values
 {
+    std::string         config_path_ = "config.json";
     std::string         address_ = "0.0.0.0";
     unsigned short      port_ = 8080;
     std::string         doc_root_ = ".";
+    std::string         log_file_ = "./logs/http_server.log";
     unsigned int        threads_ = 1;
     unsigned int        timeout_seconds_ = 30;
     size_t              max_body_size_ = 1 << 20;
@@ -68,11 +71,12 @@ private:
 public:
 
     const std::string& address() const;
-    const unsigned short &port() const;
+    unsigned short port() const;
     const std::string& doc_root() const;
-    const unsigned int &threads() const;
-    const unsigned int &timeout_seconds() const;
-    const size_t &max_body_size() const;
+    const std::string& log_file() const;
+    unsigned int threads() const;
+    unsigned int timeout_seconds() const;
+    size_t max_body_size() const;
 
     void dump() const;
 

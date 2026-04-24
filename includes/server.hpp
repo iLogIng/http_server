@@ -2,16 +2,14 @@
 
 #include <memory>
 #include <atomic>
+#include <chrono>
+#include <string>
 #include <boost/optional.hpp>
 #include <boost/asio.hpp>
 #include <boost/beast.hpp>
 
 #include "config.hpp"
 #include "request_handler.hpp"
-
-// 错误处理
-void
-fail(boost::beast::error_code ec, const char* what);
 
 // 服务器主机，负责监听和处理连接请求
 namespace server_host
@@ -20,6 +18,10 @@ namespace beast = boost::beast;
 namespace http = beast::http;
 namespace net = boost::asio;
 using tcp = boost::asio::ip::tcp;
+
+// 错误处理
+void
+fail(boost::beast::error_code ec, const char* what);
 
 class session
     : public std::enable_shared_from_this<session>
@@ -33,6 +35,8 @@ private:
     boost::optional<http::request_parser<http::string_body>> parser_;   // 请求分析器（含 body_limit），每次读前 emplace 新实例
     const server_config::configuration& config_;            // 配置文件
     request_handler_ptr handler_;                           // 请求处理器对象的共享指针
+    std::chrono::steady_clock::time_point req_start_time_;  // 请求开始时间
+    std::string req_info_;                                  // 请求信息 "METHOD /path"
 
 public:
     // 构造函数
@@ -119,5 +123,4 @@ private:
 };
 
 }   // namespace server_host
-
 
