@@ -8,15 +8,11 @@
 > 依赖 ***Boost::JSON*** 库提供的JSON文件解析功能
 >
 
-为该 http_server 项目提供JSON配置解析功能
+为该 http_server 项目提供配置解析功能，支持 JSON 配置文件与命令行参数。
 
-提供 config.json 解析，优先级遵循
+优先级遵循 **命令行参数 > JSON 配置文件 > 默认值**，逐层覆盖。
 
-- ***命令行参数 > 配置文件 > 默认值***
-
-Config 模块的核心任务是：接收不同来源的原始配置，经过解析和优先级合并，最终输出一个验证过的 ServerConfig 对象。
-
-就目前的设计，对于Config的读取，采取覆盖式的更新处理。
+配置模块的核心任务是：接收不同来源的原始配置，经过解析、验证和优先级合并，最终输出一个已验证的 `configuration` 对象。
 
 ## 结构
 
@@ -44,13 +40,12 @@ struct config_values
 
 包装 **`config_values`** 结构体
 
-提供 **`load_config(int argc, char *argv[])`** 方法加载配置
+仅提供 **`configuration(int argc, char *argv[])`** 构造函数，按以下顺序加载配置：
+  1. 预解析 `--config` 确定 JSON 配置文件路径
+  2. 调用 **`apply_json_config`** 加载 JSON 文件配置
+  3. 调用 **`apply_command_line`** 以命令行参数覆盖
 
-仅提供 **`configuration(int argc, int *argv[])`** 构造函数，通过调用 **`load_config`** 加载配置
-  - 依赖 **`apply_json_config`** 方法加载json文件配置
-  - 依赖 **`apply_command_line`** 方法加载命令行配置
-
-提供针对 **`config_values`** 结构体中各个数据成员的getter方法
+提供针对 **`config_values`** 结构体中各个数据成员的 getter 方法
 
 ## JSON配置文件
 

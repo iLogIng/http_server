@@ -47,14 +47,14 @@
 - **add_exact_route**
   > 注册精确路由
   - **args**
-    - `http::method`
+    - `http::verb`
     - `const std::string&`
     - `Handler`
 
-- **add_exact_route**
+- **add_prefix_route**
   > 注册前缀路由
   - **args**
-    - `http::method`
+    - `http::verb`
     - `const std::string&`
     - `Handler`
 
