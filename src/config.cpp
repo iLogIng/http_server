@@ -34,7 +34,7 @@ max_body_size() const
 
 bool
 server_config::
-valid_address(std::string &addr)
+valid_address(const std::string &addr)
 {
     return !addr.empty();
 }
@@ -48,7 +48,7 @@ valid_port(uint64_t port)
 
 bool
 server_config::
-valid_doc_root(std::string &path)
+valid_doc_root(const std::string &path)
 {
     return !path.empty();
 }

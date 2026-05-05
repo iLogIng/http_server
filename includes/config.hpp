@@ -29,13 +29,13 @@ struct config_values
 };
 
 bool
-valid_address(std::string &addr);
+valid_address(const std::string &addr);
 
 bool
 valid_port(uint64_t port);
 
 bool
-valid_doc_root(std::string &path);
+valid_doc_root(const std::string &path);
 
 bool
 valid_threads(uint64_t count);
