@@ -33,6 +33,7 @@ PRIVATE
     Boost::system
     Boost::thread
     Boost::log
+    Boost::log_setup
     Boost::program_options
     Boost::json
 )
