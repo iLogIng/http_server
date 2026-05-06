@@ -4,10 +4,12 @@
 #include "../includes/utils.hpp"
 
 #include <string>
+#include <fstream>
 
 server_service::static_file_service::
 static_file_service(const server_config::configuration &config)
     : config_(config)
+    , lru_cache_(config)
 {}
 
 server_service::Handler
@@ -24,37 +26,45 @@ handle_GET_request(
     beast::string_view full_path
 ) const
 {
-    http::file_body::value_type body;
-    beast::error_code ec;
-
-    body.open(full_path.data(), beast::file_mode::scan, ec);
-    if (ec) {
-        if (ec == beast::errc::no_such_file_or_directory) {
-            LOG_WARNING << "No Such File or Directory";
-            return server_utils::make_not_found(req, full_path);
-        }
-        else {
-            std::string err_msg = ec.message();
-            return server_utils::make_server_error(req, err_msg);
-        }
+    // 检查缓存
+    auto cached = lru_cache_.get(std::string(full_path));
+    if(cached) {
+        http::response<http::string_body> res{http::status::ok, req.version()};
+        res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
+        res.set(http::field::content_type, server_utils::mime_type(full_path));
+        res.content_length(cached->size());
+        res.keep_alive(req.keep_alive());
+        res.body() = std::move(*cached);
+        return res;
     }
 
-    const std::size_t size = body.size();
+    // 未命中 从磁盘读入内存
+    std::ifstream file(full_path.data(), std::ios::binary | std::ios::ate);
+    if (!file) {
+        LOG_WARNING << "No Such File or Directory";
+        return server_utils::make_not_found(req, full_path);
+    }
 
+    auto size = static_cast<std::size_t>(file.tellg());
     if (size > this->config_.max_body_size()) {
         LOG_WARNING << "Payload Too Large: " << size << " > " << this->config_.max_body_size();
         return server_utils::make_payload_too_large(req, this->config_.max_body_size());
     }
 
-    http::response<http::file_body> res{
-        std::piecewise_construct,
-        std::make_tuple(std::move(body)),
-        std::make_tuple(http::status::ok, req.version())
-    };
+    std::string content(size, '\0');
+    file.seekg(0);
+    file.read(content.data(), size);
+
+    // 入缓存
+    lru_cache_.put(std::string(full_path), content);
+
+    // 返回 string_body 响应
+    http::response<http::string_body> res{http::status::ok, req.version()};
     res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
     res.set(http::field::content_type, server_utils::mime_type(full_path));
-    res.content_length(size);
+    res.content_length(content.size());
     res.keep_alive(req.keep_alive());
+    res.body() = std::move(content);
 
     return res;
 }
@@ -66,6 +76,17 @@ handle_HEAD_request(
     beast::string_view full_path
 ) const
 {
+    // 检查缓存
+    auto cached = lru_cache_.get(std::string(full_path));
+    if (cached) {
+        http::response<http::empty_body> res{http::status::ok, req.version()};
+        res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
+        res.set(http::field::content_type, server_utils::mime_type(full_path));
+        res.content_length(cached->size());
+        res.keep_alive(req.keep_alive());
+        return res;
+    }
+
     http::file_body::value_type body;
     beast::error_code ec;
 

@@ -246,6 +246,7 @@ on_accept(beast::error_code ec, tcp::socket &&socket)
     }
 
     if(session::active_sessions() >= config_.max_connections()) {
+        // 会话活动超出连接数量
         LOG_WARNING << "Rate limit exceeded " << session::active_sessions()
                     << " active, max " << config_.max_connections();
         auto stream = std::make_shared<beast::tcp_stream>(std::move(socket));

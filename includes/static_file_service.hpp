@@ -2,6 +2,7 @@
 
 #include "config.hpp"
 #include "router.hpp"
+#include "cache.hpp"
 
 #include <boost/beast.hpp>
 #include <boost/filesystem.hpp>
@@ -19,6 +20,7 @@ class static_file_service
 
 private:
     const server_config::configuration &config_;
+    mutable server_cache::lru_cache<std::string, std::string> lru_cache_;
 
 public:
     explicit static_file_service(const server_config::configuration &config);
