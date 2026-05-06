@@ -44,6 +44,11 @@ server_config::configuration::
 max_connections() const
 { return config_vals_.max_connections_;}
 
+size_t
+server_config::configuration::
+max_cache_entries() const
+{ return config_vals_.max_cache_entries_;}
+
 bool
 server_config::
 valid_address(const std::string &addr)
@@ -93,6 +98,13 @@ valid_max_connections(uint64_t max_connections)
     return max_connections > 0;
 }
 
+bool
+server_config::
+valid_max_cache_entries(uint64_t max_cache_entries)
+{
+    return max_cache_entries < (static_cast<uint64_t>(1) << 31);
+}
+
 // 采用直接覆盖方案进行命令行参数的传入
 void server_config::configuration::
 apply_command_line(int argc, char *argv[])
@@ -108,7 +120,8 @@ apply_command_line(int argc, char *argv[])
         ("threads,t", prog_opts::value<unsigned int>(), "Number of threads")
         ("timeout_seconds,s", prog_opts::value<unsigned int>(), "Timeout in seconds")
         ("max_body_size,b", prog_opts::value<size_t>(), "Maximum body size")
-        ("max_connections,n", prog_opts::value<size_t>(), "Max connections");
+        ("max_connections,n", prog_opts::value<size_t>(), "Max connections")
+        ("max_cache_entries, e", prog_opts::value<size_t>(), "Max Cache Entries");
 
     prog_opts::variables_map vm;
     try {
@@ -144,6 +157,8 @@ apply_command_line(int argc, char *argv[])
         this->config_vals_.max_body_size_ = vm["max_body_size"].as<size_t>();
     if(vm.count("max_connections"))
         this->config_vals_.max_connections_ = vm["max_connections"].as<size_t>();
+    if(vm.count("max_cache_entries"))
+        this->config_vals_.max_cache_entries_ = vm["max_cache_entries"].as<size_t>();
 
 }
 
@@ -226,6 +241,16 @@ apply_json_config(std::string path)
             LOG_WARNING << "Invalid max connections in JSON:" << size_val;
         }
     }
+
+    if (json_values.contains("max_cache_entries") && json_values.at("max_cache_entries").is_number()) {
+        auto size_val = json_values.at("max_cache_entries").as_int64();
+        if(valid_max_cache_entries(size_val)) {
+            this->config_vals_.max_cache_entries_ = static_cast<size_t>(size_val);
+        }
+        else {
+            LOG_WARNING << "Invalid max cache entries in JSON:" << size_val;
+        }
+    }
 }
 
 // 配置加载：命令行 > JSON > 默认值
@@ -277,15 +302,16 @@ configuration(int argc, char *argv[])
 void
 server_config::configuration::
 dump() const {
-    LOG_INFO << "Config File:     " << config_vals_.config_path_;
-    LOG_INFO << "Address:         " << config_vals_.address_;
-    LOG_INFO << "Port:            " << config_vals_.port_;
-    LOG_INFO << "Document Root:   " << config_vals_.doc_root_;
-    LOG_INFO << "Log File:        " << config_vals_.log_file_;
-    LOG_INFO << "Threads:         " << config_vals_.threads_;
-    LOG_INFO << "Timeout (sec):   " << config_vals_.timeout_seconds_;
-    LOG_INFO << "Max Body Size:   " << config_vals_.max_body_size_ << " bytes";
-    LOG_INFO << "Max Connections: " << config_vals_.max_connections_;
+    LOG_INFO << "Config File:           " << config_vals_.config_path_;
+    LOG_INFO << "Address:               " << config_vals_.address_;
+    LOG_INFO << "Port:                  " << config_vals_.port_;
+    LOG_INFO << "Document Root:         " << config_vals_.doc_root_;
+    LOG_INFO << "Log File:              " << config_vals_.log_file_;
+    LOG_INFO << "Threads:               " << config_vals_.threads_;
+    LOG_INFO << "Timeout (sec):         " << config_vals_.timeout_seconds_;
+    LOG_INFO << "Max Body Size:         " << config_vals_.max_body_size_ << " bytes";
+    LOG_INFO << "Max Connections:       " << config_vals_.max_connections_;
+    LOG_INFO << "Max Cache Entries:     " << config_vals_.max_cache_entries_;
 }
 
 

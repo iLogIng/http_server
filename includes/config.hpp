@@ -26,7 +26,7 @@ struct config_values
     unsigned int        timeout_seconds_ = 30;
     std::size_t         max_body_size_ = 1 << 20;
     std::size_t         max_connections_ = 0;
-
+    std::size_t         max_cache_entries_ = 0;
 };
 
 bool
@@ -49,6 +49,9 @@ valid_max_body_size(uint64_t max_body_size);
 
 bool
 valid_max_connections(uint64_t max_connections);
+
+bool
+valid_max_cache_entries(uint64_t max_cache_entries);
 
 // 配置类
 // 命令行参数 > 配置文件 > 默认值 逐层覆盖
@@ -82,6 +85,7 @@ public:
     unsigned int timeout_seconds() const;
     std::size_t max_body_size() const;
     std::size_t max_connections() const;
+    std::size_t max_cache_entries() const;
 
     void dump() const;
 
