@@ -47,5 +47,12 @@
 |**405**|*make_method_not_allowed*|方法不允许|
 |**413**|*make_payload_too_large*|请求体过大|
 |**500**|*make_server_error*|服务器内部错误|
+|**503**|*make_service_unavalible*|服务不可用（限流/过载），自动添加 `Retry-After` 头|
 |通用|*make_error_response*|生成任意状态码的简单 HTML 响应|
+
+### 响应函数说明
+
+- **make_service_unavalible(unsigned int version, bool keep_alive, beast::string_view what)**
+  - 生成 503 Service Unavailable 响应，内置 `Retry-After: 5` 头
+  - 不依赖请求对象，可在无 `http::request` 的场景（如 listener 限流）中直接调用
 

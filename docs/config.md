@@ -33,6 +33,7 @@ struct config_values
     unsigned int        threads_ = 1;
     unsigned int        timeout_seconds_ = 30;
     size_t              max_body_size_ = 1 << 20;
+    size_t              max_connections_ = 0;
 };
 ```
 
@@ -45,7 +46,7 @@ struct config_values
   2. 调用 **`apply_json_config`** 加载 JSON 文件配置
   3. 调用 **`apply_command_line`** 以命令行参数覆盖
 
-提供针对 **`config_values`** 结构体中各个数据成员的 getter 方法
+提供针对 **`config_values`** 结构体中各个数据成员的 getter 方法（`address()`、`port()`、`doc_root()`、`log_file()`、`threads()`、`timeout_seconds()`、`max_body_size()`、`max_connections()`）。
 
 ## JSON配置文件
 
@@ -61,7 +62,8 @@ struct config_values
     "threads":1,
     "timeout_seconds":30,
     "max_body_size":10485760,
-    "log_file":"./logs/http_server.log"
+    "log_file":"./logs/http_server.log",
+    "max_connections":10000
 }
 ```
 
@@ -77,6 +79,7 @@ struct config_values
   -t [ --threads ] arg         Number of threads
   -s [ --timeout_seconds ] arg Timeout in seconds
   -b [ --max_body_size ] arg   Maximum body size
+  -n [ --max_connections ] arg Maximum concurrent connections
 ```
 
 ## 优先级

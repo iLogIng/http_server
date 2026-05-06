@@ -139,7 +139,7 @@ flowchart TD
   > 监听网络端口
 
 - **on_accept**
-  > 从端口接收报文
+  > 从端口接收报文。若活跃会话数超过 `config_.max_connections()`，拒绝连接并异步写回 503 响应（含 `Retry-After` 头），不创建 session
   - **args**
     - `beast::error_code` **ec**
     - `tcp::socket` **socket**
@@ -154,7 +154,6 @@ flowchart TD
 
 #### 构造函数
 
-目前仅包含唯一的构造函数
-
 - `listener(net::io_context& ioc, tcp::endpoint endpoint, const server_config::configuration& config, request_handler_ptr handler)`
   - 初始化 acceptor，设置地址复用、绑定、监听
+  - `config_.max_connections()` 用于 on_accept 中的限流检查（默认 0 = 不限流）
