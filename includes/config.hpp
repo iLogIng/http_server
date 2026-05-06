@@ -24,7 +24,8 @@ struct config_values
     std::string         log_file_ = "./logs/http_server.log";
     unsigned int        threads_ = 1;
     unsigned int        timeout_seconds_ = 30;
-    size_t              max_body_size_ = 1 << 20;
+    std::size_t         max_body_size_ = 1 << 20;
+    std::size_t         max_connections_ = 0;
 
 };
 
@@ -45,6 +46,9 @@ valid_timeout_seconds(uint64_t timeout_second);
 
 bool
 valid_max_body_size(uint64_t max_body_size);
+
+bool
+valid_max_connections(uint64_t max_connections);
 
 // 配置类
 // 命令行参数 > 配置文件 > 默认值 逐层覆盖
@@ -76,7 +80,8 @@ public:
     const std::string& log_file() const;
     unsigned int threads() const;
     unsigned int timeout_seconds() const;
-    size_t max_body_size() const;
+    std::size_t max_body_size() const;
+    std::size_t max_connections() const;
 
     void dump() const;
 

@@ -4,33 +4,45 @@
 
 #include <fstream>
 
-const std::string& server_config::configuration::
+const std::string&
+server_config::configuration::
 address() const
 { return config_vals_.address_; }
 
-unsigned short server_config::configuration::
+unsigned short
+server_config::configuration::
 port() const
 { return config_vals_.port_; }
 
-const std::string& server_config::configuration::
+const std::string&
+server_config::configuration::
 doc_root() const
 { return config_vals_.doc_root_; }
 
-const std::string& server_config::configuration::
+const std::string&
+server_config::configuration::
 log_file() const
 { return config_vals_.log_file_; }
 
-unsigned int server_config::configuration::
+unsigned int
+server_config::configuration::
 threads() const
 { return config_vals_.threads_; }
 
-unsigned int server_config::configuration::
+unsigned int
+server_config::configuration::
 timeout_seconds() const
 { return config_vals_.timeout_seconds_; }
 
-size_t server_config::configuration::
+size_t
+server_config::configuration::
 max_body_size() const
 { return config_vals_.max_body_size_; }
+
+size_t
+server_config::configuration::
+max_connections() const
+{ return config_vals_.max_connections_;}
 
 bool
 server_config::
@@ -74,6 +86,13 @@ valid_max_body_size(uint64_t max_body_size)
     return max_body_size > 0;
 }
 
+bool
+server_config::
+valid_max_connections(uint64_t max_connections)
+{
+    return max_connections > 0;
+}
+
 // 采用直接覆盖方案进行命令行参数的传入
 void server_config::configuration::
 apply_command_line(int argc, char *argv[])
@@ -88,7 +107,8 @@ apply_command_line(int argc, char *argv[])
         ("log_file,l", prog_opts::value<std::string>(), "Log file path")
         ("threads,t", prog_opts::value<unsigned int>(), "Number of threads")
         ("timeout_seconds,s", prog_opts::value<unsigned int>(), "Timeout in seconds")
-        ("max_body_size,b", prog_opts::value<size_t>(), "Maximum body size");
+        ("max_body_size,b", prog_opts::value<size_t>(), "Maximum body size")
+        ("max_connections,n", prog_opts::value<size_t>(), "Max connections");
 
     prog_opts::variables_map vm;
     try {
@@ -122,6 +142,8 @@ apply_command_line(int argc, char *argv[])
         this->config_vals_.timeout_seconds_ = vm["timeout_seconds"].as<unsigned int>();
     if(vm.count("max_body_size"))
         this->config_vals_.max_body_size_ = vm["max_body_size"].as<size_t>();
+    if(vm.count("max_connections"))
+        this->config_vals_.max_connections_ = vm["max_connections"].as<size_t>();
 
 }
 
@@ -195,6 +217,15 @@ apply_json_config(std::string path)
         }
     }
 
+    if (json_values.contains("max_connections") && json_values.at("max_connections").is_number()) {
+        auto size_val = json_values.at("max_connections").as_int64();
+        if(valid_max_connections(size_val)) {
+            this->config_vals_.max_connections_ = static_cast<size_t>(size_val);
+        }
+        else {
+            LOG_WARNING << "Invalid max connections in JSON:" << size_val;
+        }
+    }
 }
 
 // 配置加载：命令行 > JSON > 默认值
@@ -254,6 +285,7 @@ dump() const {
     LOG_INFO << "Threads:         " << config_vals_.threads_;
     LOG_INFO << "Timeout (sec):   " << config_vals_.timeout_seconds_;
     LOG_INFO << "Max Body Size:   " << config_vals_.max_body_size_ << " bytes";
+    LOG_INFO << "Max Connections: " << config_vals_.max_connections_;
 }
 
 
