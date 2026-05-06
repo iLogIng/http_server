@@ -31,6 +31,7 @@
 > 配置系统（JSON + 命令行） 结构化日志（控制台 + 文件轮转）
 > 请求日志（方法 + 路径 + 耗时） 优雅关闭（信号捕获 + 会话排空 + 强制超时）
 > 路径穿越防护（双重校验） 请求体大小限制（413）
+> 连接限流（503 + Retry-After 头） LRU 文件内容缓存（线程安全，可配置容量）
 > Google Test 单元测试 + 端到端集成测试（57 用例全通过）
 
 ## 项目结构
@@ -52,6 +53,8 @@
   - 工具模块
 - **static_file_service**
   - 静态文件服务模块
+- **cache**
+  - LRU 缓存模块，泛型模板，多线程安全
 - **router**
   - 路由模块，管理精确路由与前缀路由匹配
 - **request_handler**
@@ -83,6 +86,7 @@ graph TD
 
     subgraph 服务层
         static_service[static_file_service]
+        cache[cache<br/>lru_cache]
         router[router]
         request_handler[request_handler]
     end
@@ -104,6 +108,8 @@ graph TD
     static_service --> config
     static_service --> utils
     static_service --> logger
+    static_service -.-> cache
+    cache --> config
 
     router -.-> Handler[Handler 类型]
     request_handler --> router
@@ -133,15 +139,28 @@ classDiagram
         +threads()
         +timeout_seconds()
         +max_body_size()
+        +max_connections()
+        +max_cache_entries()
     }
 
     class static_file_service {
         -const configuration& config_
+        -lru_cache cache_
         +static_file_service(config)
         +handle_request(req) message_generator
         +as_handler() Handler
         -handle_GET_request(req, full_path)
         -handle_HEAD_request(req, full_path)
+    }
+
+    class lru_cache {
+        -mutex mutex_
+        -list items_
+        -map lookup_
+        +get(key) optional~Value~
+        +put(key, value)
+        +erase(key) bool
+        +clear()
     }
 
     class router {
@@ -190,8 +209,11 @@ classDiagram
 
     %% 依赖关系
     static_file_service --> configuration : 持有引用
+    static_file_service --> lru_cache : 持有缓存实例
     session --> configuration : 持有引用（超时）
     listener --> configuration : 持有引用
+
+    lru_cache --> configuration : 读取容量配置
 
     request_handler --> router : 组合 (router_ptr)
     request_handler --> Handler : 持有 default_handler_
@@ -229,8 +251,8 @@ classDiagram
 
 | 特性 | 优先级 | 说明 |
 |------|--------|------|
-| **LRU 静态文件缓存** | P3 | 减少高并发下热点文件重复磁盘 I/O |
-| **连接数统计/限流** | P3 | 活跃连接超阈值返回 503 |
+| **LRU 静态文件缓存** | P3 | ✅ **已完成** — 泛型 `lru_cache<K,V>` 模板，集成至 `static_file_service`，1000 并发下 QPS 14,006 |
+| **连接数统计/限流** | P3 | **已完成** — `listener::on_accept` 检查活跃会话数，超限时异步写回 503 + `Retry-After` |
 | **Range 请求** | P3 | 支持断点续传 |
 | **POST/DELETE 方法支持** | P3 | 扩展动态 API |
 | **HTTPS 支持** | P3 | 集成 boost::asio::ssl |
@@ -288,6 +310,7 @@ $ ./http_server --port 8080 --doc_root ./app/ --threads 4 --log_file ./logs/app.
 │   └── index.html          # 测试用静态页面
 ├── docs/
 │   ├── CONTENTS.md         # 文档目录
+│   ├── cache.md
 │   ├── config.md
 │   ├── graceful_shutdown.md
 │   ├── logger.md
@@ -297,6 +320,7 @@ $ ./http_server --port 8080 --doc_root ./app/ --threads 4 --log_file ./logs/app.
 │   ├── static_file_service.md
 │   └── utils.md
 ├── includes/
+│   ├── cache.hpp
 │   ├── config.hpp
 │   ├── graceful_shutdown.hpp
 │   ├── logger.hpp

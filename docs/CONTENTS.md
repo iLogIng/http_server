@@ -7,6 +7,7 @@
 |[config](./config.md)|配置解析 — JSON 文件、命令行参数、默认值三层优先级|`config.hpp`|
 |[logger](./logger.md)|日志系统 — 基于 Boost.Log，六级别日志|`logger.hpp`|
 |[utils](./utils.md)|工具函数 — MIME 类型、路径安全、响应报文生成|`utils.hpp`|
+|[cache](./cache.md)|LRU 缓存 — 泛型模板，多线程安全，文件内容缓存|`cache.hpp`|
 
 ## 请求处理层 (Request Handling)
 
