@@ -59,6 +59,12 @@ make_server_error(
     beast::string_view what);
 
 http::response<http::string_body>
+make_service_unavalible(
+    unsigned int version,
+    bool keep_alive,
+    beast::string_view what);
+
+http::response<http::string_body>
 make_error_response(
     http::status status,
     unsigned version,

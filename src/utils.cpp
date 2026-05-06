@@ -270,6 +270,24 @@ make_server_error(
 
 server_utils::http::response<server_utils::http::string_body>
 server_utils::
+make_service_unavalible(
+    unsigned int version,
+    bool keep_alive,
+    beast::string_view what)
+{
+    http::response<http::string_body> res{http::status::service_unavailable, version};
+    res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
+    res.set(http::field::content_type, "text/html");
+    res.set(http::field::retry_after, "5");
+    res.keep_alive(keep_alive);
+    res.body() = "Server Busy: '" + std::string(what) + "'";
+    LOG_ERROR << "Server Unavalible: '" << what << "'";
+    res.prepare_payload();
+    return res;
+}
+
+server_utils::http::response<server_utils::http::string_body>
+server_utils::
 make_error_response(
     http::status status,
     unsigned version,
