@@ -129,11 +129,12 @@ on_write(
         return fail(ec, "write");
 
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::steady_clock::now() - req_start_time_).count();
+        std::chrono::steady_clock::now() - req_start_time_
+    ).count();
     LOG_INFO << req_info_ << " " << elapsed << "ms";
 
     // 若不为保持连接
-    if(! keep_alive)
+    if(!keep_alive)
     {
         // 这意味着我们应该关闭连接，通常因为响应指明了 "Connection: close" 语义
         return do_close();
@@ -244,12 +245,26 @@ on_accept(beast::error_code ec, tcp::socket &&socket)
         return;
     }
 
-    // 创建并开始一个新会话
-    std::make_shared<session>(
-        std::move(socket),
-        config_,
-        handler_
-    )->run();
+    if(session::active_sessions() >= config_.max_connections()) {
+        LOG_WARNING << "Rate limit exceeded " << session::active_sessions()
+                    << " active, max " << config_.max_connections();
+        auto stream = std::make_shared<beast::tcp_stream>(std::move(socket));
+        stream->expires_after(std::chrono::seconds(5));
+        http::async_write(*stream,
+            server_utils::make_service_unavalible(11, false, "Too Many Connections"),
+            [stream](beast::error_code ec, std::size_t) {
+                stream->socket().shutdown(tcp::socket::shutdown_send, ec);
+            }
+        );
+    }
+    else {
+        // 创建并开始一个新会话
+        std::make_shared<session>(
+            std::move(socket),
+            config_,
+            handler_
+        )->run();
+    }
 
     // 监听另一个连接
     do_accept();
