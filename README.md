@@ -4,8 +4,7 @@
 > **2026.4.1**
 >
 > **version 0.0.1**
-> **2026.5.X**
->
+> **2026.5.5**
 
 ## 项目简介 Description
 
@@ -30,7 +29,8 @@
 
 > 实现 HTTP/1.1 异步并发 超时控制 路由分发 静态文件服务
 > 配置系统（JSON + 命令行） 结构化日志（控制台 + 文件轮转）
-> 请求日志（方法 + 路径 + 耗时） 优雅关闭 路径穿越防护
+> 请求日志（方法 + 路径 + 耗时） 优雅关闭（信号捕获 + 会话排空 + 强制超时）
+> 路径穿越防护（双重校验） 请求体大小限制（413）
 > Google Test 单元测试 + 端到端集成测试（57 用例全通过）
 
 ## 项目结构
@@ -64,7 +64,7 @@
 - ***test/***
   - Google Test 单元测试（57 用例覆盖 config、logger、router、utils、集成测试模块）
 
-**项目简图**
+### 结构简图
 
 ```mermaid
 graph TD
@@ -119,7 +119,7 @@ graph TD
     main -- 默认处理器 --> request_handler
 ```
 
-**核心结构简图**
+#### 核心结构简图
 
 ```mermaid
 classDiagram
@@ -210,7 +210,7 @@ classDiagram
 
 ## 服务器设计结构
 
-**三层结构**
+### 三层结构
 
 - **static_file_service**
   - 静态文件处理，生成相应的http响应报文
@@ -223,8 +223,10 @@ classDiagram
 
 ## TODO
 
+### 已完成
+
 1. [x] 优雅关闭 + 请求大小限制 + 路径规范化
-    - graceful_shutdown 模块：SIGINT/SIGTERM 信号处理
+    - graceful_shutdown 模块：SIGINT/SIGTERM 信号处理，会话排空 + 强制超时
     - body_limit() 在 async_read 解析阶段拦截大请求，返回 413
     - is_safe_path() + weakly_canonical 双重路径穿越防护
 2. [x] 结构化日志 + 请求日志 + 可配置路径 **logger** 模块
@@ -233,28 +235,34 @@ classDiagram
     - 多目标输出（控制台 + 轮转文件）
     - 每条请求记录方法、路径、耗时
     - 日志路径可通过 `--log_file` / JSON `log_file` 配置
-3. [x] 动态路由（精确路由 + 前缀路由）
+3. [x] 动态路由（精确路由 + 前缀路由，最长前缀优先）
 4. [x] 配置文件支持 **config** 模块
     - JSON 文件解析 + 命令行参数 + 默认值三层覆盖
     - `--config` 指定 JSON 路径
     - 全字段类型校验
-5. Range 请求 + 缓存控制
-6. 统计接口（/metrics）
-7. [x] 单元测试（Google Test，57 用例覆盖 config、logger、router、utils、集成测试）
-8. [x] 添加完整的 ***HTTP/1.1 + 并发 + 超时控制*** 功能
+5. [x] HTTP/1.1 + 并发 + 超时控制
     - session 读写均设置 `stream_.expires_after()`，超时自动断开连接
     - 超时时间通过 `--timeout_seconds` / JSON `timeout_seconds` 配置（默认 30s）
-9. HTTPS 支持
-10. 增加C++20协程，HTTPS，高级网络特性
+6. [x] 单元测试（Google Test，57 用例覆盖 config、logger、router、utils、集成测试）
 
-- 目的是产出一个可配置、可处理并发连接的、代码结构清晰的静态文件服务器
+### 待完成
+
+| 特性 | 优先级 | 说明 |
+|------|--------|------|
+| **LRU 静态文件缓存** | P3 | 减少高并发下热点文件重复磁盘 I/O |
+| **连接数统计/限流** | P3 | 活跃连接超阈值返回 503 |
+| **Range 请求** | P3 | 支持断点续传 |
+| **POST/DELETE 方法支持** | P3 | 扩展动态 API |
+| **HTTPS 支持** | P3 | 集成 boost::asio::ssl |
+| **统计接口（/metrics）** | P3 | QPS、活跃连接数等指标 |
+| **C++20 协程** | P3 | 迁移到 Asio 的 C++20 协程模型 |
 
 ## 快速开始 Getting Start
 
 > **>= C17**
 >
 
-**构建可执行文件**
+### 构建可执行文件
 
 ```bash
 $ make http_server
@@ -262,7 +270,7 @@ $ make http_server
 $ make
 ```
 
-**启动参数**
+### 启动参数
 
 可通过命令行参数或 JSON 配置文件配置服务器，优先级：**命令行 > JSON > 默认值**
 
@@ -270,7 +278,7 @@ $ make
 $ ./http_server --port 8080 --doc_root ./app/ --threads 4 --log_file ./logs/app.log
 ```
 
-**配置文件**
+### 配置文件
 
 > 默认查找 CWD 下的 `config.json`，可通过 `--config` 指定路径
 >
@@ -346,12 +354,12 @@ $ ./http_server --port 8080 --doc_root ./app/ --threads 4 --log_file ./logs/app.
 使用示例
 
 ```bash
-$ wrk -t8 -c400 -d30s http://<静态文件>
+:$ wrk -t8 -c400 -d30s http://<静态文件>
 
-$ wrk -t8 -c400 -d30s http://localhost:8080/index.html
+:$ wrk -t8 -c400 -d30s http://localhost:8080/index.html
 ```
 
-### 测试平台：
+### 测试平台
 
 ```text
 Operating System: Fedora Linux 43
@@ -369,6 +377,7 @@ Manufacturer: Acer
 Product Name: Swift SF514-52T
 System Version: V1.07
 ```
+
 ### 测试
 
 以下测试以 `./http_server --threads 8` 为测试基础
@@ -452,6 +461,7 @@ Running 30s test @ http://0.0.0.0:8080/index.html
 Requests/sec:  14674.03
 Transfer/sec:     42.38MB
 ```
+
 ```mermaid
 %%{
   init: {
