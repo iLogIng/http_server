@@ -225,26 +225,6 @@ classDiagram
 
 ### 已完成
 
-1. [x] 优雅关闭 + 请求大小限制 + 路径规范化
-    - graceful_shutdown 模块：SIGINT/SIGTERM 信号处理，会话排空 + 强制超时
-    - body_limit() 在 async_read 解析阶段拦截大请求，返回 413
-    - is_safe_path() + weakly_canonical 双重路径穿越防护
-2. [x] 结构化日志 + 请求日志 + 可配置路径 **logger** 模块
-    - 异步记录，避免日志I/O阻塞网路主进程
-    - 日志级别（trace ~ fatal）
-    - 多目标输出（控制台 + 轮转文件）
-    - 每条请求记录方法、路径、耗时
-    - 日志路径可通过 `--log_file` / JSON `log_file` 配置
-3. [x] 动态路由（精确路由 + 前缀路由，最长前缀优先）
-4. [x] 配置文件支持 **config** 模块
-    - JSON 文件解析 + 命令行参数 + 默认值三层覆盖
-    - `--config` 指定 JSON 路径
-    - 全字段类型校验
-5. [x] HTTP/1.1 + 并发 + 超时控制
-    - session 读写均设置 `stream_.expires_after()`，超时自动断开连接
-    - 超时时间通过 `--timeout_seconds` / JSON `timeout_seconds` 配置（默认 30s）
-6. [x] 单元测试（Google Test，57 用例覆盖 config、logger、router、utils、集成测试）
-
 ### 待完成
 
 | 特性 | 优先级 | 说明 |

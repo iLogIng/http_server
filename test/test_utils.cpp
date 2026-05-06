@@ -168,5 +168,13 @@ TEST_F(UtilsMakeResponseTest, ServerError)
     EXPECT_FALSE(res.body().empty());
 }
 
+TEST_F(UtilsMakeResponseTest, ServiceUnavalible)
+{
+    auto res = make_service_unavalible(11, false, "Too Many Connections");
+    EXPECT_EQ(res.result(), http::status::service_unavailable);
+    EXPECT_EQ(res.result_int(), 503);
+    EXPECT_FALSE(res.body().empty());
+}
+
 // make_error_response 声明于 utils.hpp，但尚未在 utils.cpp 中实现
 // 故暂不测试
