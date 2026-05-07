@@ -57,7 +57,7 @@ server_config::
 valid_address(const std::string &addr)
 {
     boost::system::error_code ec;
-    boost::asio::ip::make_address(addr);
+    boost::asio::ip::make_address(addr, ec);
     return !ec;
 }
 
@@ -182,14 +182,20 @@ apply_json_config(std::string path)
     auto json_values = json::parse(buffer.str()).as_object();
 
     if (json_values.contains("address") && json_values.at("address").is_string()) {
-        this->config_vals_.address_ = std::string(json_values.at("address").as_string());
-    } else {
-        LOG_WARNING << "Address Not Found or Invalid in JSON config.";
+        std::string addr{json_values.at("address").as_string()};
+        if(valid_address(addr)) {
+            this->config_vals_.address_ = addr;
+        } else {
+            LOG_WARNING << "Address Not Found or Invalid in JSON config.";
+        }
     }
     if(json_values.contains("doc_root") && json_values.at("doc_root").is_string()) {
-        this->config_vals_.doc_root_ = std::string(json_values.at("doc_root").as_string());
-    } else {
-        LOG_WARNING << "Document Root Not Found or Invalid in JSON config.";
+        std::string doc_dir{json_values.at("doc_root").as_string()};
+        if(valid_doc_root(doc_dir)) {
+            this->config_vals_.doc_root_ = doc_dir;
+        } else {
+            LOG_WARNING << "Document Root Not Found or Invalid in JSON config.";
+        }
     }
 
     if (json_values.contains("log_file") && json_values.at("log_file").is_string()) {
