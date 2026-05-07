@@ -170,7 +170,7 @@ TEST_F(UtilsMakeResponseTest, ServerError)
 
 TEST_F(UtilsMakeResponseTest, ServiceUnavalible)
 {
-    auto res = make_service_unavalible(11, false, "Too Many Connections");
+    auto res = make_service_unavailable(11, false, "Too Many Connections");
     EXPECT_EQ(res.result(), http::status::service_unavailable);
     EXPECT_EQ(res.result_int(), 503);
     EXPECT_FALSE(res.body().empty());
