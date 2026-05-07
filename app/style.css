@@ -1,0 +1,230 @@
+/* 全局重置与基础样式 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    min-height: 100vh;
+    padding: 20px;
+}
+
+/* 主容器卡片效果 */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.container:hover {
+    box-shadow: 0 25px 50px rgba(0,0,0,0.15);
+}
+
+/* 头部区域 */
+header {
+    background: #2c3e50;
+    color: white;
+    padding: 25px 30px;
+    text-align: center;
+}
+
+header h1 {
+    margin: 0;
+    font-size: 2rem;
+    letter-spacing: -0.5px;
+}
+
+header p {
+    margin: 10px 0 0;
+    opacity: 0.85;
+    font-size: 1rem;
+}
+
+/* 两栏布局 */
+.content {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.sidebar {
+    width: 280px;
+    background: #f8f9fa;
+    border-right: 1px solid #e9ecef;
+    padding: 25px 20px;
+}
+
+.sidebar h3 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: #2c3e50;
+    font-size: 1.2rem;
+    border-left: 4px solid #3498db;
+    padding-left: 12px;
+}
+
+/* 按钮组 */
+.test-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+button {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+button:hover {
+    background: #2980b9;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+button:active {
+    transform: translateY(0);
+}
+
+button.danger {
+    background: #e74c3c;
+}
+
+button.danger:hover {
+    background: #c0392b;
+}
+
+button.success {
+    background: #27ae60;
+}
+
+button.success:hover {
+    background: #219a52;
+}
+
+.main {
+    flex: 1;
+    padding: 25px;
+}
+
+/* 响应状态栏 */
+#responseHeader {
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 5px 14px;
+    border-radius: 30px;
+    font-weight: bold;
+    font-size: 0.85rem;
+}
+
+.status-ok {
+    background: #27ae60;
+    color: white;
+}
+
+.status-error {
+    background: #e74c3c;
+    color: white;
+}
+
+.status-warning {
+    background: #f39c12;
+    color: white;
+}
+
+#timeInfo {
+    color: #6c757d;
+    font-size: 0.85rem;
+    font-family: monospace;
+}
+
+/* 响应内容区域 */
+.response-area {
+    background: #1e1e2f;
+    color: #f8f8f2;
+    border-radius: 12px;
+    padding: 20px;
+    font-family: 'Fira Code', 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 550px;
+    overflow-y: auto;
+}
+
+/* 表单元素 */
+.flex-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin: 15px 0;
+}
+
+input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: border-color 0.2s;
+}
+
+input:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 0 2px rgba(52,152,219,0.2);
+}
+
+.info-text {
+    color: #6c757d;
+    font-size: 0.8rem;
+    margin-top: 16px;
+    margin-bottom: 0;
+}
+
+hr {
+    margin: 20px 0;
+    border: none;
+    border-top: 1px solid #e9ecef;
+}
+
+/* 响应式 */
+@media (max-width: 700px) {
+    .sidebar {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid #e9ecef;
+    }
+    .content {
+        flex-direction: column;
+    }
+    button {
+        text-align: center;
+        justify-content: center;
+    }
+}

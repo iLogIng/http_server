@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/style.css">
+    <title>HTTP 服务器综合测试页</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        header {
+            background: #2c3e50;
+            color: white;
+            padding: 20px 30px;
+            text-align: center;
+        }
+        header h1 {
+            margin: 0;
+            font-size: 1.8rem;
+        }
+        header p {
+            margin: 10px 0 0;
+            opacity: 0.8;
+        }
+        .content {
+            display: flex;
+            flex-wrap: wrap;
+        }
+        .sidebar {
+            width: 280px;
+            background: #f8f9fa;
+            border-right: 1px solid #e9ecef;
+            padding: 20px;
+        }
+        .sidebar h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        .test-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        button:hover {
+            background: #2980b9;
+            transform: translateY(-1px);
+        }
+        button.danger {
+            background: #e74c3c;
+        }
+        button.danger:hover {
+            background: #c0392b;
+        }
+        button.success {
+            background: #27ae60;
+        }
+        button.success:hover {
+            background: #219a52;
+        }
+        .main {
+            flex: 1;
+            padding: 20px;
+        }
+        .response-area {
+            background: #1e1e2f;
+            color: #f8f8f2;
+            border-radius: 12px;
+            padding: 20px;
+            font-family: 'Fira Code', 'Courier New', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-bottom: 12px;
+        }
+        .status-ok { background: #27ae60; color: white; }
+        .status-error { background: #e74c3c; color: white; }
+        .status-warning { background: #f39c12; color: white; }
+        hr {
+            margin: 20px 0;
+            border: none;
+            border-top: 1px solid #e9ecef;
+        }
+        .info-text {
+            color: #6c757d;
+            font-size: 14px;
+            margin-bottom: 16px;
+        }
+        .flex-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>🚀 HTTP 服务器功能验证面板</h1>
+        <p>测试静态文件服务、动态路由、错误处理及响应时间</p>
+    </header>
+    <div class="content">
+        <div class="sidebar">
+            <h3>📡 快速测试</h3>
+            <div class="test-buttons">
+                <button id="btnIndex">🏠 首页 (GET /)</button>
+                <button id="btnApiHello">💬 API 示例 (GET /api/hello)</button>
+                <button id="btnStaticCss">🎨 静态 CSS 文件 (假设存在 /style.css)</button>
+                <button id="btn404">❌ 404 页面 (GET /not-exist)</button>
+                <button id="btnLargeFile">📦 大文件测试 (需配置较大文件)</button>
+                <button id="btnHeadRequest">📋 HEAD 请求 (GET + HEAD 对比)</button>
+                <button id="btnMethodNotAllowed">🚫 方法不允许 (POST /)</button>
+                <button class="danger" id="btnLongPath">⚠️ 恶意长路径测试</button>
+                <button class="success" id="btnCustom">✏️ 自定义路径</button>
+            </div>
+            <hr>
+            <div class="flex-row">
+                <input type="text" id="customPath" placeholder="/api/hello" value="/api/hello">
+                <button id="btnCustomGo" style="flex:0">发送</button>
+            </div>
+            <p class="info-text" style="margin-top: 16px;">💡 提示：确保服务器已在 <span id="serverAddr">localhost:8080</span> 运行。</p>
+        </div>
+        <div class="main">
+            <div id="responseHeader">
+                <span class="status-badge status-ok" id="statusBadge">等待测试</span>
+                <span id="timeInfo" style="margin-left: 12px; color: #6c757d;"></span>
+            </div>
+            <div class="response-area" id="responseContent">
+                👈 点击左侧按钮测试服务器的各项功能<br>
+                响应详情将显示在此处...
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 获取服务器地址（从当前页面推断，可修改）
+    const serverOrigin = window.location.origin;  // 若通过服务器访问则自动获取，否则默认
+    const defaultBase = 'http://localhost:8080';
+    const baseUrl = (serverOrigin !== 'null' && serverOrigin !== 'file://') ? serverOrigin : defaultBase;
+    document.getElementById('serverAddr').innerText = baseUrl.replace(/^https?:\/\//, '');
+
+    // 通用请求函数
+    async function sendRequest(method, url, body = null, headers = {}) {
+        const startTime = performance.now();
+        const fullUrl = url.startsWith('http') ? url : baseUrl + url;
+        try {
+            const options = {
+                method: method,
+                headers: {
+                    'Accept': '*/*',
+                    ...headers
+                }
+            };
+            if (body && (method === 'POST' || method === 'PUT')) {
+                options.body = body;
+                options.headers['Content-Type'] = 'application/json';
+            }
+            const response = await fetch(fullUrl, options);
+            const endTime = performance.now();
+            const duration = (endTime - startTime).toFixed(2);
+            
+            // 读取响应体（文本或JSON）
+            let responseBody;
+            const contentType = response.headers.get('content-type') || '';
+            if (contentType.includes('application/json')) {
+                responseBody = await response.json();
+                responseBody = JSON.stringify(responseBody, null, 2);
+            } else {
+                responseBody = await response.text();
+                // 限制显示长度
+                if (responseBody.length > 2000) {
+                    responseBody = responseBody.substring(0, 2000) + '\n... (内容过长已截断)';
+                }
+            }
+            
+            // 更新UI
+            const statusColor = response.ok ? 'status-ok' : 'status-error';
+            const statusText = `${response.status} ${response.statusText}`;
+            document.getElementById('statusBadge').className = `status-badge ${statusColor}`;
+            document.getElementById('statusBadge').innerHTML = `${method} ${url} → ${statusText}`;
+            document.getElementById('timeInfo').innerHTML = `⏱️ ${duration} ms`;
+            
+            const headersPretty = Array.from(response.headers.entries())
+                .map(([k, v]) => `${k}: ${v}`)
+                .join('\n');
+            
+            document.getElementById('responseContent').innerHTML = `
+                <strong>📥 响应头</strong>\n${headersPretty}\n\n
+                <strong>📄 响应体</strong>\n${escapeHtml(responseBody)}
+            `;
+        } catch (err) {
+            const endTime = performance.now();
+            const duration = (endTime - startTime).toFixed(2);
+            document.getElementById('statusBadge').className = 'status-badge status-error';
+            document.getElementById('statusBadge').innerHTML = `❌ 请求失败`;
+            document.getElementById('timeInfo').innerHTML = `⏱️ ${duration} ms`;
+            document.getElementById('responseContent').innerHTML = `
+                <strong>⚠️ 网络错误或服务器无响应</strong>\n${err.message}\n\n
+                请确认服务器正在运行: ${baseUrl}
+            `;
+        }
+    }
+    
+    // 辅助函数：防止XSS
+    function escapeHtml(str) {
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+    
+    // 绑定事件
+    document.getElementById('btnIndex').addEventListener('click', () => sendRequest('GET', '/'));
+    document.getElementById('btnApiHello').addEventListener('click', () => sendRequest('GET', '/api/hello'));
+    document.getElementById('btnStaticCss').addEventListener('click', () => sendRequest('GET', '/style.css'));  // 如果不存在会404
+    document.getElementById('btn404').addEventListener('click', () => sendRequest('GET', '/not-exist'));
+    document.getElementById('btnLargeFile').addEventListener('click', () => {
+        // 需要服务器根目录下有一个大文件，例如 large.bin
+        sendRequest('GET', '/large.bin');
+    });
+    document.getElementById('btnHeadRequest').addEventListener('click', async () => {
+        const url = '/';
+        const startTime = performance.now();
+        try {
+            const response = await fetch(baseUrl + url, { method: 'HEAD' });
+            const endTime = performance.now();
+            const duration = (endTime - startTime).toFixed(2);
+            document.getElementById('statusBadge').className = 'status-badge status-ok';
+            document.getElementById('statusBadge').innerHTML = `HEAD ${url} → ${response.status} ${response.statusText}`;
+            document.getElementById('timeInfo').innerHTML = `⏱️ ${duration} ms`;
+            const headers = Array.from(response.headers.entries()).map(([k,v]) => `${k}: ${v}`).join('\n');
+            document.getElementById('responseContent').innerHTML = `<strong>HEAD 响应头 (无正文)</strong>\n${headers}`;
+        } catch (err) {
+            document.getElementById('statusBadge').className = 'status-badge status-error';
+            document.getElementById('statusBadge').innerHTML = `HEAD 请求失败`;
+            document.getElementById('responseContent').innerHTML = err.message;
+        }
+    });
+    document.getElementById('btnMethodNotAllowed').addEventListener('click', () => sendRequest('POST', '/', JSON.stringify({test:1}), {'Content-Type':'application/json'}));
+    document.getElementById('btnLongPath').addEventListener('click', () => {
+        // 构造一个很长的路径（超过正常限制）
+        let longPath = '/a';
+        for(let i=0;i<500;i++) longPath += '/b';
+        sendRequest('GET', longPath);
+    });
+    document.getElementById('btnCustomGo').addEventListener('click', () => {
+        let path = document.getElementById('customPath').value.trim();
+        if (!path.startsWith('/')) path = '/' + path;
+        sendRequest('GET', path);
+    });
+    // 也可以添加自定义方法选择等简单功能
+    // 额外: 显示自定义路径输入框的直接发送
+    document.getElementById('customPath').addEventListener('keypress', (e) => {
+        if(e.key === 'Enter') document.getElementById('btnCustomGo').click();
+    });
+</script>
+</body>
+</html>
