@@ -247,10 +247,10 @@ make_payload_too_large(
     res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
     res.set(http::field::content_type, "text/html");
     res.keep_alive(req.keep_alive());
-    auto payload_size = actual_size.has_value()
-        ? std::to_string(actual_size.value())
-        : (req.payload_size().has_value()
-            ? std::to_string(req.payload_size().value())
+    auto payload_size = actual_size.has_value() ?
+        std::to_string(actual_size.value())
+        : (req.payload_size().has_value() ?
+            std::to_string(req.payload_size().value())
             : "unknown");
     res.body() = "Payload Too Large: '" + payload_size + "' exceeds the limit of '" + std::to_string(max_size) + "'";
     LOG_WARNING << "Payload Too Large: " << payload_size << " > " << max_size;
