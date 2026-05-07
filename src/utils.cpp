@@ -35,18 +35,14 @@ server_utils::
 mime_type(beast::string_view path)
 {
     using beast::iequals;
-    auto const ext = [&path]
-    {
-        auto const pos = path.rfind(".");
-        if(pos == beast::string_view::npos)
+    auto const pos = path.rfind(".");
+    if(pos != beast::string_view::npos) {
+        auto const ext = path.substr(pos);
+        auto itr = mime_types.find(ext);
+        if(itr != mime_types.end())
         {
-            return beast::string_view{};
+            return itr->second;
         }
-        return path.substr(pos);
-    }();
-    if(mime_types.find(std::string(ext)) != mime_types.end())
-    {
-        return mime_types.find(std::string(ext))->second;
     }
     return "application/text";
 }
@@ -276,7 +272,7 @@ make_server_error(
 
 server_utils::http::response<server_utils::http::string_body>
 server_utils::
-make_service_unavalible(
+make_service_unavailable(
     unsigned int version,
     bool keep_alive,
     beast::string_view what)
