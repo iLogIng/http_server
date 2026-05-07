@@ -48,7 +48,7 @@ handle_GET_request(
     auto size = static_cast<std::size_t>(file.tellg());
     if (size > this->config_.max_body_size()) {
         LOG_WARNING << "Payload Too Large: " << size << " > " << this->config_.max_body_size();
-        return server_utils::make_payload_too_large(req, this->config_.max_body_size());
+        return server_utils::make_payload_too_large(req, this->config_.max_body_size(), size);
     }
 
     std::string content(size, '\0');
@@ -106,7 +106,7 @@ handle_HEAD_request(
 
     if(size > this->config_.max_body_size()) {
         LOG_WARNING << "Payload Too Large: " << size << " > " << this->config_.max_body_size();
-        return server_utils::make_payload_too_large(req, this->config_.max_body_size());
+        return server_utils::make_payload_too_large(req, this->config_.max_body_size(), size);
     }
 
     http::response<http::empty_body> res{http::status::ok, req.version()};

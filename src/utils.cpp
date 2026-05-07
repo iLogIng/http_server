@@ -240,14 +240,20 @@ server_utils::http::response<server_utils::http::string_body>
 server_utils::
 make_payload_too_large(
     const http::request<http::string_body>& req,
-    std::size_t max_size)
+    std::size_t max_size,
+    std::optional<std::size_t> actual_size)
 {
     http::response<http::string_body> res{http::status::payload_too_large, req.version()};
     res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
     res.set(http::field::content_type, "text/html");
     res.keep_alive(req.keep_alive());
-    res.body() = "Payload Too Large: '" + std::to_string(req.payload_size().value()) + "' exceeds the limit of '" + std::to_string(max_size) + "'";
-    LOG_WARNING << "Payload Too Large: " << req.payload_size().value() << " > " << max_size;
+    auto payload_size = actual_size.has_value()
+        ? std::to_string(actual_size.value())
+        : (req.payload_size().has_value()
+            ? std::to_string(req.payload_size().value())
+            : "unknown");
+    res.body() = "Payload Too Large: '" + payload_size + "' exceeds the limit of '" + std::to_string(max_size) + "'";
+    LOG_WARNING << "Payload Too Large: " << payload_size << " > " << max_size;
     res.prepare_payload();
     return res;
 }

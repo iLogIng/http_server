@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 #include <boost/beast.hpp>
 #include <boost/filesystem.hpp>
 
@@ -51,7 +53,8 @@ make_method_not_allowed(
 http::response<http::string_body>
 make_payload_too_large(
     const http::request<http::string_body>& req,
-    std::size_t max_size);
+    std::size_t max_size,
+    std::optional<std::size_t> actual_size = std::nullopt);
 
 http::response<http::string_body>
 make_server_error(
