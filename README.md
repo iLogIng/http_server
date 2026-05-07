@@ -17,13 +17,15 @@
 ## 包依赖
 
 - **Boost**
-    - **Asio**
-    - **Beast**
-    - **Filesystem**
-    - **JSON**
-    - **Log**
-    - **Program Options**
-    - **Thread**
+  - **Asio**
+  - **Beast**
+  - **Filesystem**
+  - **JSON**
+  - **Log**
+  - **Program Options**
+  - **Thread**
+
+-----
 
 ## 功能特性 Features
 
@@ -36,15 +38,15 @@
 
 ## 项目结构
 
-## 项目结构
-
 ### [目录 contents](./docs/CONTENTS.md)
 
 > 目录汇总，包含各个模块的引用
 >
 
-**模块简述**
+### 模块简述
 
+- **src/main.cpp**
+  - 项目入口
 - **logger**
   - 日志模块
 - **config**
@@ -66,6 +68,8 @@
 
 - ***test/***
   - Google Test 单元测试（57 用例覆盖 config、logger、router、utils、集成测试模块）
+
+-----
 
 ### 结构简图
 
@@ -243,33 +247,30 @@ classDiagram
 - **session**
   - 会话处理，处理服务器与客户的连接
 
+-----
+
 ## TODO
 
-### 已完成
-
-### 待完成
-
 | 特性 | 优先级 | 说明 |
-|------|--------|------|
-| **LRU 静态文件缓存** | P3 | ✅ **已完成** — 泛型 `lru_cache<K,V>` 模板，集成至 `static_file_service`，1000 并发下 QPS 14,006 |
-| **连接数统计/限流** | P3 | **已完成** — `listener::on_accept` 检查活跃会话数，超限时异步写回 503 + `Retry-After` |
-| **Range 请求** | P3 | 支持断点续传 |
+|:----:|:------:|:----:|
 | **POST/DELETE 方法支持** | P3 | 扩展动态 API |
 | **HTTPS 支持** | P3 | 集成 boost::asio::ssl |
+| **Range 请求** | P3 | 支持断点续传 |
 | **统计接口（/metrics）** | P3 | QPS、活跃连接数等指标 |
 | **C++20 协程** | P3 | 迁移到 Asio 的 C++20 协程模型 |
 
 ## 快速开始 Getting Start
 
 > **>= C17**
+> **Boost >= 1.83**
 >
 
 ### 构建可执行文件
 
 ```bash
-$ make http_server
+:$ make http_server
 # 或
-$ make
+:$ make
 ```
 
 ### 启动参数
@@ -277,7 +278,7 @@ $ make
 可通过命令行参数或 JSON 配置文件配置服务器，优先级：**命令行 > JSON > 默认值**
 
 ```bash
-$ ./http_server --port 8080 --doc_root ./app/ --threads 4 --log_file ./logs/app.log
+:$ ./http_server --port 8080 --doc_root ./app/ --threads 4 --log_file ./logs/app.log
 ```
 
 ### 配置文件
@@ -290,12 +291,16 @@ $ ./http_server --port 8080 --doc_root ./app/ --threads 4 --log_file ./logs/app.
     "address":"0.0.0.0",
     "port":8080,
     "doc_root":"./app/",
+    "log_file":"./logs/http_server.log",
     "threads":1,
     "timeout_seconds":30,
     "max_body_size":10485760,
-    "log_file":"./logs/http_server.log"
+    "max_connections":10000,
+    "max_cache_entries":64
 }
 ```
+
+-----
 
 ## 文件结构
 
@@ -307,12 +312,12 @@ $ ./http_server --port 8080 --doc_root ./app/ --threads 4 --log_file ./logs/app.
 ├── README.md               # 本文件
 ├── TODO.md                 # 功能扩展清单
 ├── app/
+│   ├── test.html           # 响应测试页面
+│   ├── style.css           # test.html 样式表
 │   └── index.html          # 测试用静态页面
 ├── docs/
 │   ├── CONTENTS.md         # 文档目录
 │   ├── cache.md
-│   ├── config.md
-│   ├── graceful_shutdown.md
 │   ├── logger.md
 │   ├── request_handler.md
 │   ├── router.md
@@ -349,147 +354,10 @@ $ ./http_server --port 8080 --doc_root ./app/ --threads 4 --log_file ./logs/app.
     └── test_utils.cpp
 ```
 
-## 压力测试
+-----
 
-> 该压力测试基于 **wrk** 工具
-> ***[wrk tool](https://github.com/wg/wrk)***
->
+## [压力测试](./stress_test.md)
 
-使用示例
-
-```bash
-:$ wrk -t8 -c400 -d30s http://<静态文件>
-
-:$ wrk -t8 -c400 -d30s http://localhost:8080/index.html
-```
-
-### 测试平台
-
-```text
-Operating System: Fedora Linux 43
-KDE Plasma Version: 6.6.4
-KDE Frameworks Version: 6.25.0
-Qt Version: 6.10.3
-Kernel Version: 6.19.11-200.fc43.x86_64 (64-bit)
-Graphics Platform: Wayland
-
-Processors: 8 × Intel® Core™ i5-8250U CPU @ 1.60GHz
-Memory: 8 GiB of RAM (7.6 GiB usable)
-Graphics Processor: Intel® UHD Graphics 620
-
-Manufacturer: Acer
-Product Name: Swift SF514-52T
-System Version: V1.07
-```
-
-### 测试
-
-以下测试以 `./http_server --threads 8` 为测试基础
-
-以下压力测试参数基于：8线程，[100 200 400 600 800 1000]、30秒
-
-```bash
-$ ./wrk -t8 -c100 -d30s http://0.0.0.0:8080/index.html
-
-Running 30s test @ http://0.0.0.0:8080/index.html
-  8 threads and 100 connections
-  Thread Stats   Avg      Stdev     Max   +/- Stdev
-    Latency    41.71ms    1.91ms 132.20ms   96.21%
-    Req/Sec   288.64     26.01   363.00     65.94%
-  69084 requests in 30.09s, 608.87MB read
-Requests/sec:   2295.91
-Transfer/sec:     20.24MB
-```
-
-```bash
-$ ./wrk -t8 -c200 -d30s http://0.0.0.0:8080/index.html
-
-Running 30s test @ http://0.0.0.0:8080/index.html
-  8 threads and 200 connections
-  Thread Stats   Avg      Stdev     Max   +/- Stdev
-    Latency    41.77ms    2.00ms  81.22ms   93.09%
-    Req/Sec   600.19     49.03   757.00     66.54%
-  143658 requests in 30.09s, 1.24GB read
-Requests/sec:   4773.95
-Transfer/sec:     42.08MB
-```
-
-```bash
-$ ./wrk -t8 -c400 -d30s http://0.0.0.0:8080/index.html
-
-Running 30s test @ http://0.0.0.0:8080/index.html
-  8 threads and 400 connections
-  Thread Stats   Avg      Stdev     Max   +/- Stdev
-    Latency    41.64ms    2.05ms 104.60ms   97.13%
-    Req/Sec     1.20k    71.01     1.40k    77.08%
-  287979 requests in 30.05s, 2.48GB read
-Requests/sec:   9581.91
-Transfer/sec:     84.45MB
-```
-
-```bash
-$ ./wrk -t8 -c600 -d30s http://0.0.0.0:8080/index.html
-Running 30s test @ http://0.0.0.0:8080/index.html
-  8 threads and 600 connections
-  Thread Stats   Avg      Stdev     Max   +/- Stdev
-    Latency    42.60ms    3.29ms 195.66ms   93.88%
-    Req/Sec     1.77k   139.11     2.21k    72.42%
-  422457 requests in 30.09s, 3.64GB read
-Requests/sec:  14038.62
-Transfer/sec:    123.73MB
-```
-
-```bash
-$ ./wrk -t8 -c800 -d30s http://0.0.0.0:8080/index.html
-Running 30s test @ http://0.0.0.0:8080/index.html
-  8 threads and 800 connections
-  Thread Stats   Avg      Stdev     Max   +/- Stdev
-    Latency    58.37ms   29.32ms   1.08s    81.89%
-    Req/Sec     1.41k   497.77     2.58k    60.45%
-  336367 requests in 30.10s, 2.41GB read
-  Non-2xx or 3xx responses: 56814
-Requests/sec:  11176.80
-Transfer/sec:     82.11MB
-```
-
-```bash
-$ ./wrk -t8 -c1000 -d30s http://0.0.0.0:8080/index.html
-
-Running 30s test @ http://0.0.0.0:8080/index.html
-  8 threads and 1000 connections
-  Thread Stats   Avg      Stdev     Max   +/- Stdev
-    Latency    51.38ms   22.48ms 714.20ms   71.71%
-    Req/Sec     1.85k   622.61     3.40k    56.97%
-  441681 requests in 30.10s, 1.25GB read
-  Non-2xx or 3xx responses: 301848
-Requests/sec:  14674.03
-Transfer/sec:     42.38MB
-```
-
-```mermaid
-%%{
-  init: {
-    'theme': 'base',
-    'themeVariables': {
-      'xyChart': {
-        'plotColorPalette': '#E76F51, #2A9D8F',
-        'xAxisLineColor': '#264653',
-        'yAxisLineColor': '#264653',
-        'xAxisTitleColor': '#264653',
-        'yAxisTitleColor': '#264653',
-        'xAxisLabelColor': '#264653',
-        'yAxisLabelColor': '#264653',
-        'backgroundColor': '#F4F1DE'
-      }
-    }
-  }
-}%%
-xychart-beta
-    title "性能曲线"
-    x-axis "并发连接数" [100, 200, 400, 600, 800, 1000]
-    y-axis "QPS" 0 --> 16000
-    line "总 QPS" [2296, 4774, 9582, 14039, 11177, 14674]
-    line "有效 QPS" [2296, 4774, 9582, 14039, 9289, 4646]
-```
+-----
 
 ## END
