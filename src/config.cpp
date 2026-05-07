@@ -121,7 +121,7 @@ apply_command_line(int argc, char *argv[])
         ("timeout_seconds,s", prog_opts::value<unsigned int>(), "Timeout in seconds")
         ("max_body_size,b", prog_opts::value<size_t>(), "Maximum body size")
         ("max_connections,n", prog_opts::value<size_t>(), "Max connections")
-        ("max_cache_entries, e", prog_opts::value<size_t>(), "Max Cache Entries");
+        ("max_cache_entries,e", prog_opts::value<size_t>(), "Max Cache Entries");
 
     prog_opts::variables_map vm;
     try {

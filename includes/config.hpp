@@ -10,7 +10,6 @@
 namespace server_config
 {
 
-namespace po = boost::program_options;
 namespace json = boost::json;
 namespace prog_opts = boost::program_options;
 
