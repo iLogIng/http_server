@@ -2,7 +2,10 @@
 
 #include "../includes/logger.hpp"
 
+#include <boost/asio.hpp>
+
 #include <fstream>
+#include <filesystem>
 
 const std::string&
 server_config::configuration::
@@ -53,7 +56,9 @@ bool
 server_config::
 valid_address(const std::string &addr)
 {
-    return !addr.empty();
+    boost::system::error_code ec;
+    boost::asio::ip::make_address(addr);
+    return !ec;
 }
 
 bool
@@ -67,7 +72,7 @@ bool
 server_config::
 valid_doc_root(const std::string &path)
 {
-    return !path.empty();
+    return !path.empty() && std::filesystem::is_directory(path);
 }
 
 bool
