@@ -252,7 +252,7 @@ on_accept(beast::error_code ec, tcp::socket &&socket)
         auto stream = std::make_shared<beast::tcp_stream>(std::move(socket));
         stream->expires_after(std::chrono::seconds(5));
         http::async_write(*stream,
-            server_utils::make_service_unavalible(11, false, "Too Many Connections"),
+            server_utils::make_service_unavailable(11, false, "Too Many Connections"),
             [stream](beast::error_code ec, std::size_t) {
                 stream->socket().shutdown(tcp::socket::shutdown_send, ec);
             }
