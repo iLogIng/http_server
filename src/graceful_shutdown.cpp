@@ -37,14 +37,7 @@ server_host::graceful_shutdown::
 on_signal(const boost::system::error_code& ec, int signal_number)
 {
     if (ec) {
-        if (ec == net::error::operation_aborted) {
-            LOG_INFO << "Signal Handler cancelled due to shutdown.";
-            return;
-        }
-        if (ec) {
-            LOG_ERROR << "Signal Handler Error: " << ec.message();
-            return;
-        }
+        LOG_INFO << "Signal Handler cancelled due to shutdown.";
         return;
     }
     LOG_INFO << "Received signal " << signal_number << ", shutting down the server...";
