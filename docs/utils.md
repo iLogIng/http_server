@@ -52,7 +52,7 @@
 
 ### 响应函数说明
 
-- **make_service_unavalible(unsigned int version, bool keep_alive, beast::string_view what)**
+- **make_service_unavailable(unsigned int version, bool keep_alive, beast::string_view what)**
   - 生成 503 Service Unavailable 响应，内置 `Retry-After: 5` 头
   - 不依赖请求对象，可在无 `http::request` 的场景（如 listener 限流）中直接调用
 
