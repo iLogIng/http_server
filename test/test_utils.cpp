@@ -175,6 +175,3 @@ TEST_F(UtilsMakeResponseTest, ServiceUnavalible)
     EXPECT_EQ(res.result_int(), 503);
     EXPECT_FALSE(res.body().empty());
 }
-
-// make_error_response 声明于 utils.hpp，但尚未在 utils.cpp 中实现
-// 故暂不测试

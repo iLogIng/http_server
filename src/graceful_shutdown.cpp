@@ -37,6 +37,9 @@ server_host::graceful_shutdown::
 on_signal(const boost::system::error_code& ec, int signal_number)
 {
     if (ec) {
+        if (ec == boost::asio::error::operation_aborted) {
+            LOG_INFO << "Operation Aborted.";
+        }
         LOG_INFO << "Signal Handler cancelled due to shutdown.";
         return;
     }

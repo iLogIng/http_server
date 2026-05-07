@@ -24,7 +24,7 @@ struct config_values
     unsigned int        threads_ = 1;
     unsigned int        timeout_seconds_ = 30;
     std::size_t         max_body_size_ = 1 << 20;
-    std::size_t         max_connections_ = 0;
+    std::size_t         max_connections_ = 1;
     std::size_t         max_cache_entries_ = 0;
 };
 

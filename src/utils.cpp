@@ -34,7 +34,6 @@ server_utils::beast::string_view
 server_utils::
 mime_type(beast::string_view path)
 {
-    using beast::iequals;
     auto const pos = path.rfind(".");
     if(pos != beast::string_view::npos) {
         auto const ext = path.substr(pos);
@@ -283,7 +282,7 @@ make_service_unavailable(
     res.set(http::field::retry_after, "5");
     res.keep_alive(keep_alive);
     res.body() = "Server Busy: '" + std::string(what) + "'";
-    LOG_ERROR << "Server Unavalible: '" << what << "'";
+    LOG_ERROR << "Server Unavailable: '" << what << "'";
     res.prepare_payload();
     return res;
 }
