@@ -111,7 +111,7 @@ apply_command_line(int argc, char *argv[])
 {
     prog_opts::options_description desc("Allowed options");
     desc.add_options()
-        ("help,h",              "Show help message")
+        ("help,h", "Show help message")
         ("config,c", prog_opts::value<std::string>(), "Path to JSON config file")
         ("address,a", prog_opts::value<std::string>(), "Server address")
         ("port,p", prog_opts::value<unsigned short>(), "Server port")
@@ -178,16 +178,15 @@ apply_json_config(std::string path)
 
     if (json_values.contains("address") && json_values.at("address").is_string()) {
         this->config_vals_.address_ = std::string(json_values.at("address").as_string());
-    }
-    else {
+    } else {
         LOG_WARNING << "Address Not Found or Invalid in JSON config.";
     }
     if(json_values.contains("doc_root") && json_values.at("doc_root").is_string()) {
         this->config_vals_.doc_root_ = std::string(json_values.at("doc_root").as_string());
-    }
-    else {
+    } else {
         LOG_WARNING << "Document Root Not Found or Invalid in JSON config.";
     }
+
     if (json_values.contains("log_file") && json_values.at("log_file").is_string()) {
         this->config_vals_.log_file_ = std::string(json_values.at("log_file").as_string());
     }
@@ -196,8 +195,7 @@ apply_json_config(std::string path)
         auto port_val = json_values.at("port").as_int64();
         if(valid_port(port_val)) {
             this->config_vals_.port_ = static_cast<unsigned short>(port_val);
-        }
-        else {
+        } else {
             LOG_WARNING << "Invalid port in JSON:" << port_val;
         }
     }
@@ -206,8 +204,7 @@ apply_json_config(std::string path)
         auto thrd_val = json_values.at("threads").as_int64();
         if(valid_threads(thrd_val)) {
             this->config_vals_.threads_ = static_cast<unsigned int>(thrd_val);
-        }
-        else {
+        } else {
             LOG_WARNING << "Invalid threads count in JSON:" << thrd_val;
         }
     }
@@ -216,8 +213,7 @@ apply_json_config(std::string path)
         auto time_val = json_values.at("timeout_seconds").as_int64();
         if(valid_timeout_seconds(time_val)) {
             this->config_vals_.timeout_seconds_ = static_cast<unsigned int>(time_val);
-        }
-        else {
+        } else {
             LOG_WARNING << "Invalid timeout seconds in JSON:" << time_val;
         }
     }
@@ -226,8 +222,7 @@ apply_json_config(std::string path)
         auto size_val = json_values.at("max_body_size").as_int64();
         if(valid_max_body_size(size_val)) {
             this->config_vals_.max_body_size_ = static_cast<size_t>(size_val);
-        }
-        else {
+        } else {
             LOG_WARNING << "Invalid max body size in JSON:" << size_val;
         }
     }
@@ -236,8 +231,7 @@ apply_json_config(std::string path)
         auto size_val = json_values.at("max_connections").as_int64();
         if(valid_max_connections(size_val)) {
             this->config_vals_.max_connections_ = static_cast<size_t>(size_val);
-        }
-        else {
+        } else {
             LOG_WARNING << "Invalid max connections in JSON:" << size_val;
         }
     }
@@ -246,8 +240,7 @@ apply_json_config(std::string path)
         auto size_val = json_values.at("max_cache_entries").as_int64();
         if(valid_max_cache_entries(size_val)) {
             this->config_vals_.max_cache_entries_ = static_cast<size_t>(size_val);
-        }
-        else {
+        } else {
             LOG_WARNING << "Invalid max cache entries in JSON:" << size_val;
         }
     }
@@ -270,7 +263,8 @@ configuration(int argc, char *argv[])
             prog_opts::store(
                 prog_opts::command_line_parser(argc, argv)
                     .options(cfg_opt).allow_unregistered().run(),
-                vm);
+                vm
+            );
             prog_opts::notify(vm);
         } catch (const prog_opts::error&) { }
         if (vm.count("config")) {

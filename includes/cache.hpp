@@ -20,6 +20,7 @@ class lru_cache
     using list_type = std::list<std::pair<key_type, value_type>>;
     using list_iterator = typename list_type::iterator;
     using map_type = std::unordered_map<key_type, list_iterator>;
+    using map_iterator = typename map_type::iterator;
 private:
     const server_config::configuration& config_;
 
@@ -67,13 +68,15 @@ server_cache::lru_cache<K, V>::
 get(const key_type& key)
 {
     std::lock_guard lock(mutex_);
-    auto itr = lookup_.find(key);
-    if (itr == lookup_.end()) {
+    map_iterator map_itr = lookup_.find(key);
+    // 资源存在性
+    if (map_itr == lookup_.end()) {
         return std::nullopt;
     }
-    items_.splice(items_.begin(), items_, itr->second);
-    // lookup::pair<key, itr>::second
-    return itr->second->second;
+    // 将资源再次作为list.front
+    items_.splice(items_.begin(), items_, map_itr->second);
+    // lookup::pair<key, itr[list_iterator]>::second
+    return map_itr->second->second;
 }
 
 template<typename K, typename V>
@@ -81,21 +84,25 @@ void
 server_cache::lru_cache<K, V>::
 put(key_type key, value_type value)
 {
+    // 不进行缓存
     if(config_.max_cache_entries() == 0) {
         return;
     }
     std::lock_guard lock(mutex_);
-    auto itr = lookup_.find(key);
-    if(itr != lookup_.end()) {
-        itr->second->second = std::move(value);
-        items_.splice(items_.begin(), items_, itr->second);
+    map_iterator map_itr = lookup_.find(key);
+    // 存在缓存内容
+    if(map_itr != lookup_.end()) {
+        map_itr->second->second = std::move(value);
+        items_.splice(items_.begin(), items_, map_itr->second);
         return;
     }
-    if(config_.max_cache_entries() > 0 && items_.size() >= config_.max_cache_entries()) {
+    // 缓存超出配置
+    if(items_.size() >= config_.max_cache_entries()) {
         auto evict = std::prev(items_.end());
         lookup_.erase(evict->first);
         items_.erase(evict);
     }
+    // 将新资源作为list.front
     items_.emplace_front(std::move(key), std::move(value));
     lookup_[items_.front().first] = items_.begin();
 }
@@ -106,7 +113,7 @@ server_cache::lru_cache<K, V>::
 erase(const key_type& key)
 {
     std::lock_guard lock(mutex_);
-    auto itr = lookup_.find(key);
+    map_iterator itr = lookup_.find(key);
     if(itr == lookup_.end()) {
         return false;
     }
