@@ -1,7 +1,7 @@
 CXX = g++
 STD_VERSION = -std=c++17
 
-CXXFLAGS = ${STD_VERSION} -DBOOST_LOG_DYN_LINK -Wall -Wextra -g
+CXXFLAGS = $(STD_VERSION) -DBOOST_LOG_DYN_LINK -g -Wall Wextra
 
 BOOST_LIBS = -lboost_system -lboost_filesystem -lboost_thread \
              -lboost_log -lboost_log_setup \
@@ -18,15 +18,11 @@ SRC_UTILS   = $(ROOT)/src/utils.cpp
 SRC_ROUTER  = $(ROOT)/src/router.cpp
 SRC_CONFIG  = $(ROOT)/src/config.cpp
 
-# ============================================================
-# 确保 exec 目录存在
-# ============================================================
+# 确保 test exec 目录存在
 $(EXEC_DIR):
 	@mkdir -p $(EXEC_DIR)
 
-# ============================================================
 # 各测试构建目标
-# ============================================================
 
 # logger — 纯头文件模块，无需链接 src/*.cpp
 test_logger: test_logger.cpp $(ROOT)/includes/logger.hpp | $(EXEC_DIR)
