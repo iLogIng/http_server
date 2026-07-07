@@ -10,8 +10,9 @@ set(SOURCES
     utils.cpp
 )
 
-# 添加头文件
+# 添加头文件（供 IDE 索引和依赖追踪）
 set(HEADERS
+    ../includes/cache.hpp
     ../includes/config.hpp
     ../includes/graceful_shutdown.hpp
     ../includes/logger.hpp
@@ -24,8 +25,14 @@ set(HEADERS
 
 add_executable(http_server ${SOURCES} ${HEADERS})
 
-target_include_directories(http_server PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_include_directories(http_server PRIVATE ${Boost_INCLUDE_DIRS})
+target_include_directories(http_server PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${PROJECT_SOURCE_DIR}/includes
+)
+
+target_compile_options(http_server PRIVATE
+    -Wall -Wextra
+)
 
 target_link_libraries(http_server
 PRIVATE

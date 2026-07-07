@@ -45,7 +45,7 @@ TEST(ConfigValidTest, PortBoundary)
 
 TEST(ConfigValidTest, DocRoot)
 {
-    std::string p1 = "/var/www";
+    std::string p1 = "/tmp";
     std::string p2 = ".";
     EXPECT_TRUE(valid_doc_root(p1));
     EXPECT_TRUE(valid_doc_root(p2));
