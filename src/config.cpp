@@ -3,6 +3,7 @@
 #include "../includes/logger.hpp"
 
 #include <boost/asio.hpp>
+#include <boost/thread.hpp>
 
 #include <fstream>
 #include <filesystem>
