@@ -356,7 +356,7 @@ classDiagram
 
 -----
 
-## [压力测试](./stress_test.md)
+## [压力测试](./stress-test/stress-test.md)
 
 -----
 
