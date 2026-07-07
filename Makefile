@@ -1,21 +1,25 @@
 CXX = g++
-STD_VERSION = -std=c++17
-OPT = -O2
+
+CXXFLAGS 	= 	-std=c++17
+CXXFLAGS 	+= 	-g -O2
+CXXFLAGS 	+= 	-Wall -Wextra -Werror
+
+# MACRO
+CXXFLAGS 	+= 	-DBOOST_LOG_DYN_LINK
+# INCLUDE PATH
+CXXFLAGS 	+= 	-I./includes/
+# LIB PATH
+# ---
 
 BOOST_LIBS_LINK = -lboost_system -lboost_filesystem -lboost_thread \
 					-lboost_log -lboost_log_setup \
 					-lboost_program_options -lboost_json \
 					-lpthread
 
-INC_DIR = -I./includes
-
 SRCS = src/*.cpp
 INCLUDES = includes/*.hpp
 
 TARGET = http_server
-
-COMPILFLAG = -g $(OPT) -Wall -Wextra
-CXXFLAGS = $(STD_VERSION) -DBOOST_LOG_DYN_LINK $(COMPILFLAG) $(INC_DIR)
 
 $(TARGET): $(INCLUDES) $(SRCS)
 	$(CXX) $(CXXFLAGS) $^ $(BOOST_LIBS_LINK) -o $@
@@ -37,3 +41,4 @@ clean: clean-test
 
 clean-test:
 	$(MAKE) -C test clean-test
+

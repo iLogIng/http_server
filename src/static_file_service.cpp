@@ -123,20 +123,26 @@ server_service::static_file_service::handle_request(
     const http::request<http::string_body>& req
 ) const
 {
-    if(req.method() != http::verb::get && 
+    if(req.method() != http::verb::get &&
         req.method() != http::verb::head) {
         return server_utils::make_bad_request(req, "Unknown HTTP-method");
     }
 
-    if(!server_utils::is_safe_path(req.target())) {
+    // 将根路径 / 映射为 /index.html，避免 boost::filesystem 将 / 视为绝对根路径
+    auto target = req.target();
+    if (target == "/") {
+        target = "/index.html";
+    }
+
+    if(!server_utils::is_safe_path(target)) {
         return server_utils::make_bad_request(req, "Illegal request-target");
     }
 
-    std::string full_path = server_utils::secure_file_cat(this->config_.doc_root(), req.target());
+    std::string full_path = server_utils::secure_file_cat(this->config_.doc_root(), target);
     if (full_path.empty()) {
         return server_utils::make_bad_request(req, req.target());
     }
-    if (req.target().back() == '/') {
+    if (target.back() == '/') {
         full_path = server_utils::secure_file_cat(full_path, "index.html");
         if (full_path.empty()) {
             return server_utils::make_bad_request(req, req.target());
