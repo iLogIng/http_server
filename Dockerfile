@@ -32,7 +32,7 @@ RUN apt-get update \
         libboost-json1.83.0 \
     && rm -rf /var/lib/apt/lists/*
 
-# 从构建阶段拷贝编译好的二进制
+# 从构建阶段拷贝编译好的二进制 根据CMakeLists.txt构建规则
 COPY --from=builder /src/build/src/http_server /usr/local/bin/http_server
 
 # 创建工作目录
