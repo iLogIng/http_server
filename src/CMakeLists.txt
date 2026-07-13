@@ -1,4 +1,3 @@
-# 添加源文件
 set(SOURCES
     main.cpp
     config.cpp
@@ -10,7 +9,6 @@ set(SOURCES
     utils.cpp
 )
 
-# 添加头文件（供 IDE 索引和依赖追踪）
 set(HEADERS
     ../includes/cache.hpp
     ../includes/config.hpp
@@ -30,12 +28,9 @@ target_include_directories(http_server PRIVATE
     ${PROJECT_SOURCE_DIR}/includes
 )
 
-target_compile_options(http_server PRIVATE
-    -Wall -Wextra
-)
-
-target_link_libraries(http_server
-PRIVATE
+target_link_libraries(http_server PRIVATE
+    project_warnings
+    project_defs
     Boost::filesystem
     Boost::system
     Boost::thread
