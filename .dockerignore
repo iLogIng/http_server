@@ -1,0 +1,28 @@
+# 构建产物
+build/
+http_server
+
+# 版本控制
+.git/
+.gitignore
+
+# 开发文档
+docs/
+*.md
+
+# 测试
+test/
+
+# 压力测试
+stress-test/
+
+# IDE / 编辑器
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 系统杂项
+.DS_Store
+Thumbs.db
