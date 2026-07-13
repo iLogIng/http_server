@@ -33,7 +33,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # 从构建阶段拷贝编译好的二进制
-COPY --from=builder /src/build/http_server /usr/local/bin/http_server
+COPY --from=builder /src/build/src/http_server /usr/local/bin/http_server
 
 # 创建工作目录
 WORKDIR /srv
