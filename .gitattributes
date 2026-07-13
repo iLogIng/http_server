@@ -1,0 +1,9 @@
+# 强制所有文本文件在提交时统一为 LF
+* text=auto
+
+# 明确指定 Dockerfile 和 .dockerignore 使用 LF
+Dockerfile text eol=lf
+.dockerignore text eol=lf
+
+# Shell 脚本也强制 LF
+*.sh text eol=lf
