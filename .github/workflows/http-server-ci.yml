@@ -23,7 +23,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install system dependencies
         run: |
@@ -56,7 +56,7 @@ jobs:
           fi
 
       - name: Cache ccache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/ccache
           key: ccache-${{ runner.os }}-${{ matrix.build_type }}-${{ github.sha }}
@@ -83,7 +83,7 @@ jobs:
       # TODO: 发布 Release 时取消注释，上传二进制产物
       # - name: Upload Release binary (artifact)
       #   if: matrix.build_type == 'Release'
-      #   uses: actions/upload-artifact@v4
+      #   uses: actions/upload-artifact@v5
       #   with:
       #     name: http_server-x86_64-linux
       #     path: build/src/http_server
