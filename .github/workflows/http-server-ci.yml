@@ -1,0 +1,90 @@
+name: CI - Build & Test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:        # 允许手动触发
+
+env:
+  CMAKE_BUILD_PARALLEL_LEVEL: 2   # 限制并行编译数，避免 Actions 环境因内存不足而 OOM
+
+jobs:
+  build-and-test:
+    name: "${{ matrix.build_type }} · g++"
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [Debug, Release]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            g++ \
+            cmake \
+            make \
+            libboost-system-dev \
+            libboost-thread-dev \
+            libboost-filesystem-dev \
+            libboost-log-dev \
+            libboost-program-options-dev \
+            libboost-json-dev \
+            libgtest-dev \
+            ccache
+          # GTest on Ubuntu ships headers + source; build and install the lib
+          # so CMake's find_package(GTest CONFIG) can pick it up
+          GTEST_SRC=""
+          if [ -d /usr/src/googletest ]; then
+            GTEST_SRC=/usr/src/googletest
+          elif [ -d /usr/src/gtest ]; then
+            GTEST_SRC=/usr/src/gtest
+          fi
+          if [ -n "$GTEST_SRC" ]; then
+            cd "$GTEST_SRC"
+            sudo cmake . -DCMAKE_BUILD_TYPE=Release
+            sudo cmake --build . --parallel "$(nproc)"
+            sudo cmake --install . --prefix /usr
+          fi
+
+      - name: Cache ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-${{ runner.os }}-${{ matrix.build_type }}-${{ github.sha }}
+          restore-keys: |
+            ccache-${{ runner.os }}-${{ matrix.build_type }}-
+            ccache-${{ runner.os }}-
+
+      - name: Configure CMake
+        run: >
+          cmake -B build
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          -DCMAKE_C_COMPILER_LAUNCHER=ccache
+          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+          -DBUILD_TESTING=ON
+
+      - name: Build
+        run: cmake --build build --config ${{ matrix.build_type }}
+
+      - name: Run unit tests + integration tests
+        working-directory: build
+        # ctest 自动发现 gtest_discover_tests 注册的测试
+        run: ctest --build-config ${{ matrix.build_type }} --output-on-failure
+
+      # TODO: 发布 Release 时取消注释，上传二进制产物
+      # - name: Upload Release binary (artifact)
+      #   if: matrix.build_type == 'Release'
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: http_server-x86_64-linux
+      #     path: build/src/http_server
+      #     retention-days: 7
