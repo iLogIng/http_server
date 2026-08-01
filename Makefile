@@ -1,15 +1,27 @@
-CXX = g++
+# make cmd
+#
+# Parallel build default: half the logical cores (min 1), auto-adaptive; CLI -j overrides.
+NPROC := $(shell nproc 2>/dev/null || echo 1)
+MAKE_JOBS := $(shell expr $(NPROC) / 2)
+ifeq ($(MAKE_JOBS),0)
+MAKE_JOBS := 1
+endif
+MAKEFLAGS += -j$(MAKE_JOBS)
 
+# = = = = = = =
+
+# CXX Compile
+CXX = g++
+# g++ flags
 CXXFLAGS 	= 	-std=c++17
 CXXFLAGS 	+= 	-g -O2
 CXXFLAGS 	+= 	-Wall -Wextra -Werror
-
 # MACRO
 CXXFLAGS 	+= 	-DBOOST_LOG_DYN_LINK
 # INCLUDE PATH
 CXXFLAGS 	+= 	-I./includes/
 # LIB PATH
-# ---
+# CXXFLAGS 	+= 	-L./path
 
 BOOST_LIBS_LINK = -lboost_system -lboost_filesystem -lboost_thread \
 					-lboost_log -lboost_log_setup \
