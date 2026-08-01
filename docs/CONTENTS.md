@@ -1,5 +1,11 @@
 # 目录 Contents
 
+## 概览 (Overview)
+
+|模块|说明|文档|
+|:---|:---|---:|
+|[architecture](./architecture.md)|架构设计 — 结构简图、核心类图、三层设计|—|
+
 ## 基础支撑层 (Foundation)
 
 |模块|说明|头文件|
