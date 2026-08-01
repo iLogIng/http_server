@@ -1,6 +1,16 @@
 cmake_minimum_required(VERSION 3.15)
 project(HttpServer VERSION 1.0.0 LANGUAGES CXX)
 
+# 限制并行编译/链接任务数，避免 Ninja 默认打满所有核心导致系统卡顿。
+# 用 -DHTTP_SERVER_BUILD_JOBS=N 可调整；构建时 -j 只能放宽整体上限，编译池仍受此限制。
+set(HTTP_SERVER_BUILD_JOBS 4 CACHE STRING "限制并行编译任务数，缓解系统卡顿问题")
+set_property(GLOBAL PROPERTY JOB_POOLS
+    compile_jobs=${HTTP_SERVER_BUILD_JOBS}
+    link_jobs=1
+)
+set(CMAKE_JOB_POOL_COMPILE compile_jobs)
+set(CMAKE_JOB_POOL_LINK link_jobs)
+
 enable_testing()
 
 set(CMAKE_CXX_STANDARD 17)
