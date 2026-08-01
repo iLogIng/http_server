@@ -15,8 +15,10 @@ namespace server_cache
 template<typename Key, typename Value>
 class lru_cache
 {
+public:
     using key_type = Key;
     using value_type = Value;
+private:
     using list_type = std::list<std::pair<key_type, value_type>>;
     using list_iterator = typename list_type::iterator;
     using map_type = std::unordered_map<key_type, list_iterator>;

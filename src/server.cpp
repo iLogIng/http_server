@@ -22,6 +22,15 @@ session(
     , handler_(std::move(handler))
 {
     ++active_sessions_;
+
+    beast::error_code ec;
+    stream_.socket().set_option(
+        net::socket_base::receive_buffer_size(std::size_t(256 * 1024)), ec);
+    stream_.socket().set_option(
+        net::socket_base::send_buffer_size(std::size_t(256 * 1024)), ec);
+    if (ec) {
+        LOG_WARNING << "Failed to set socket buffer size: " << ec.message();
+    }
 }
 
 server_host::session::

@@ -14,10 +14,12 @@ static_file_service(const server_config::configuration &config)
 
 server_service::Handler
 server_service::static_file_service::
-as_handler() const { return
+as_handler() const {
+    return
     [this](const http::request<http::string_body>& req) {
         return this->handle_request(req);
-};}
+    };
+}
 
 server_service::http::message_generator
 server_service::static_file_service::
@@ -27,14 +29,16 @@ handle_GET_request(
 ) const
 {
     // 检查缓存
-    auto cached = lru_cache_.get(std::string(full_path));
+    auto cached = lru_cache_.get(std::string{full_path});
+    // 缓存命中
     if(cached) {
-        http::response<http::string_body> res{http::status::ok, req.version()};
+        http::response<shared_string_body>
+        res{http::status::ok, req.version()};
         res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
         res.set(http::field::content_type, server_utils::mime_type(full_path));
-        res.content_length(cached->size());
+        res.content_length(cached.value()->size());
         res.keep_alive(req.keep_alive());
-        res.body() = std::move(*cached);
+        res.body() = cached.value();
         return res;
     }
 
@@ -51,20 +55,19 @@ handle_GET_request(
         return server_utils::make_payload_too_large(req, this->config_.max_body_size(), size);
     }
 
-    std::string content(size, '\0');
+    auto content = std::make_shared<std::string>(size, '\0');
     file.seekg(0);
-    file.read(content.data(), size);
-
-    // 入缓存
+    file.read(content->data(), size);
+    // 存入缓存
     lru_cache_.put(std::string(full_path), content);
 
     // 返回 string_body 响应
-    http::response<http::string_body> res{http::status::ok, req.version()};
+    http::response<shared_string_body> res{http::status::ok, req.version()};
     res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
     res.set(http::field::content_type, server_utils::mime_type(full_path));
-    res.content_length(content.size());
+    res.content_length(content->size());
     res.keep_alive(req.keep_alive());
-    res.body() = std::move(content);
+    res.body() = content;
 
     return res;
 }
@@ -82,7 +85,7 @@ handle_HEAD_request(
         http::response<http::empty_body> res{http::status::ok, req.version()};
         res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
         res.set(http::field::content_type, server_utils::mime_type(full_path));
-        res.content_length(cached->size());
+        res.content_length(cached.value()->size());
         res.keep_alive(req.keep_alive());
         return res;
     }
