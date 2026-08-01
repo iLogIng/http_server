@@ -55,6 +55,7 @@ protected:
                   "--doc_root", doc_root_str.c_str(),
                   "--threads", "2",
                   "--timeout_seconds", "10",
+                  "--max_cache_entries", "64",
                   "--log_file", "/tmp/integration_test.log",
                   static_cast<char*>(nullptr));
             _exit(127);
@@ -166,6 +167,19 @@ TEST_F(IntegrationTest, HeadRequestReturnsNoBody)
     auto res = send_request(http::verb::head, "/index.html");
     EXPECT_EQ(res.result(), http::status::ok);
     EXPECT_TRUE(res.body().empty());
+}
+
+TEST_F(IntegrationTest, HeadRequestOnCachedFileReturnsNoBody)
+{
+    auto get_res = send_request(http::verb::get, "/index.html");
+    ASSERT_EQ(get_res.result(), http::status::ok);
+    ASSERT_FALSE(get_res.body().empty());
+
+    auto head_res = send_request(http::verb::head, "/index.html");
+    EXPECT_EQ(head_res.result(), http::status::ok);
+    EXPECT_EQ(head_res[http::field::content_length],
+              get_res[http::field::content_length]);
+    EXPECT_TRUE(head_res.body().empty());
 }
 
 TEST_F(IntegrationTest, PostToUnregisteredRouteReturns404)
