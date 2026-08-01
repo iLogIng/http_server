@@ -22,7 +22,7 @@
 
 ### 阶段一 · POST + OPTIONS（计划已定，待实现）
 
-> 范围：POST 解析 + 回显（不落盘）；方法覆盖 POST + OPTIONS。
+> 范围：POST 解析 + 回显；方法覆盖 POST + OPTIONS。
 > 顺带修复三处问题：query string 剥离、前缀路由路径边界、`max_body_size` 默认值对齐。
 
 - [ ] **请求体解析工具**（`server_utils`）：`url_decode`（%XX、+ -> 空格）、`parse_urlencoded`（form-urlencoded -> map）
