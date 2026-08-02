@@ -35,6 +35,40 @@
 > **Boost 组件** Asio / Beast / Filesystem / JSON / Log / Program Options / Thread
 >
 
+### 容器运行（Docker / Podman）
+
+```bash
+# 构建
+# （国内网络建议加 --build-arg 换国内 apt 源，绕开代理/加速）
+## docker :
+docker build -t http-server:latest .
+## podman :
+podman build -t http-server:latest .
+
+# 运行
+# （默认监听 0.0.0.0:8080，非 root 用户，threads=2）
+docker run --rm -p 8080:8080 http-server:latest
+## podman 类似
+
+# 验证
+curl http://localhost:8080/
+```
+
+- 国内网络构建：`docker build --build-arg APT_MIRROR=mirrors.tuna.tsinghua.edu.cn -t http-server:latest .`
+- 镜像约 99MB，基于 ubuntu:24.04 + Boost 1.83（多阶段构建，仅含运行时库）。
+- 自定义静态目录：`docker run --rm -p 8080:8080 -v $(pwd)/my_site:/srv/app http-server:latest`
+
+**容器管理**
+
+```bash
+docker stop http-server-test       # 停止容器
+docker start http-server-test      # stop 后再次启动
+docker restart http-server-test    # 重启
+docker logs -f http-server-test    # 日志
+docker rm -f http-server-test      # 停止并删除容器
+docker image rm http_server:test   # 连镜像一起删
+```
+
 ### 构建可执行文件
 
 ```bash

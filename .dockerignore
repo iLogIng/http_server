@@ -5,6 +5,7 @@ http_server
 # 版本控制
 .git/
 .gitignore
+.gitattributes
 
 # 开发文档
 docs/
@@ -15,6 +16,12 @@ test/
 
 # 压力测试
 stress-test/
+wrk/
+wrk
+
+# 运行日志
+logs/
+*.log
 
 # IDE / 编辑器
 .vscode/
