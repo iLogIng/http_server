@@ -141,17 +141,34 @@ server_service::static_file_service::handle_request(
         return server_utils::make_bad_request(req, "Illegal request-target");
     }
 
-    std::string full_path = server_utils::secure_file_cat(this->config_.doc_root(), target);
-    if (full_path.empty()) {
-        return server_utils::make_bad_request(req, req.target());
-    }
-    // 目录请求解析为目录下的 index.html（覆盖 /dir/ 与 /dir 两种写法）
-    boost::system::error_code ec;
-    if (fs::is_directory(full_path, ec)) {
-        full_path = (fs::path(full_path) / "index.html").string();
-        if (!fs::exists(full_path, ec)) {
-            return server_utils::make_not_found(req, target);
+    std::string full_path;
+    {
+        // 优先查路径解析缓存：命中即跳过 weakly_canonical / is_directory 的系统调用
+        std::shared_lock lock(path_mutex_);
+        auto it = path_cache_.find(std::string(target));
+        if (it != path_cache_.end()) {
+            full_path = it->second;
         }
+    }
+    if (full_path.empty()) {
+        // 缓存未命中：规范化 + 目录解析，仅 首次或缓存淘汰后 执行
+        full_path = server_utils::secure_file_cat(this->config_.doc_root(), target);
+        if (full_path.empty()) {
+            return server_utils::make_bad_request(req, req.target());
+        }
+        // 目录请求解析为目录下的 index.html（覆盖 /dir/ 与 /dir 两种写法）
+        boost::system::error_code ec;
+        if (fs::is_directory(full_path, ec)) {
+            full_path = (fs::path(full_path) / "index.html").string();
+            if (!fs::exists(full_path, ec)) {
+                return server_utils::make_not_found(req, target);
+            }
+        }
+        std::unique_lock lock(path_mutex_);
+        if (path_cache_.size() >= max_path_cache_entries) {
+            path_cache_.clear();
+        }
+        path_cache_[std::string(target)] = full_path;
     }
 
 

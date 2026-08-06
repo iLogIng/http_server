@@ -7,6 +7,9 @@
 #include <boost/beast.hpp>
 #include <boost/filesystem.hpp>
 
+#include <shared_mutex>
+#include <unordered_map>
+
 namespace server_service
 {
 namespace beast = boost::beast;
@@ -22,6 +25,10 @@ class static_file_service
 private:
     const server_config::configuration &config_;
     mutable lru_cache_type lru_cache_;
+    // 读多写少，使用 shared_mutex允许并发读取
+    mutable std::shared_mutex path_mutex_;
+    mutable std::unordered_map<std::string, std::string> path_cache_;
+    static constexpr std::size_t max_path_cache_entries = 4096;
 
 public:
     explicit static_file_service(const server_config::configuration &config);
