@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <string>
+#include <map>
 #include <thread>
 #include <chrono>
 #include <csignal>
@@ -136,6 +137,36 @@ protected:
 
         return res;
     }
+
+    // 带自定义请求头的请求（用于条件请求测试）
+    http::response<http::string_body> send_request_with_headers(
+        http::verb method, const std::string& target,
+        const std::map<std::string, std::string>& headers) const
+    {
+        net::io_context io;
+        tcp::socket sock(io);
+        sock.connect(tcp::endpoint(
+            net::ip::make_address("127.0.0.1"), TEST_PORT));
+
+        http::request<http::string_body> req{method, target, 11};
+        req.set(http::field::host, "localhost");
+        for (const auto& [name, value] : headers) {
+            req.set(name, value);
+        }
+        req.prepare_payload();
+
+        beast::flat_buffer buffer;
+        http::write(sock, req);
+
+        http::response<http::string_body> res;
+        http::read(sock, buffer, res);
+
+        beast::error_code ec;
+        sock.shutdown(tcp::socket::shutdown_both, ec);
+        sock.close();
+
+        return res;
+    }
 };
 
 pid_t IntegrationTest::server_pid_ = -1;
@@ -172,6 +203,45 @@ TEST_F(IntegrationTest, GetDirectoryWithoutIndexHtmlReturns404)
 {
     auto res = send_request(http::verb::get, "/nonexistent-dir/");
     EXPECT_EQ(res.result(), http::status::not_found);
+}
+
+TEST_F(IntegrationTest, GetFileIncludesEtagAndLastModified)
+{
+    auto res = send_request(http::verb::get, "/index.html");
+    ASSERT_EQ(res.result(), http::status::ok);
+    EXPECT_FALSE(res[http::field::etag].empty());
+    EXPECT_FALSE(res[http::field::last_modified].empty());
+}
+
+TEST_F(IntegrationTest, GetWithMatchingEtagReturns304)
+{
+    // 先取真实 ETag
+    auto first = send_request(http::verb::get, "/index.html");
+    ASSERT_EQ(first.result(), http::status::ok);
+    auto etag = first[http::field::etag];
+    ASSERT_FALSE(etag.empty());
+
+    // 条件 GET：If-None-Match 命中 → 304 空 body
+    auto res = send_request_with_headers(http::verb::get, "/index.html",
+        {{"If-None-Match", std::string(etag)}});
+    EXPECT_EQ(res.result(), http::status::not_modified);
+    EXPECT_TRUE(res.body().empty());
+}
+
+TEST_F(IntegrationTest, GetWithMismatchedEtagReturns200)
+{
+    auto res = send_request_with_headers(http::verb::get, "/index.html",
+        {{"If-None-Match", "\"wrong-etag\""}});
+    EXPECT_EQ(res.result(), http::status::ok);
+    EXPECT_FALSE(res.body().empty());
+}
+
+TEST_F(IntegrationTest, GetWithNewerIfModifiedSinceReturns304)
+{
+    // 未来时间戳 → 文件未修改 → 304
+    auto res = send_request_with_headers(http::verb::get, "/index.html",
+        {{"If-Modified-Since", "Sun, 06 Nov 2099 08:49:37 GMT"}});
+    EXPECT_EQ(res.result(), http::status::not_modified);
 }
 
 TEST_F(IntegrationTest, GetApiHelloEndpoint)

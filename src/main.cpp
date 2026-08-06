@@ -9,6 +9,7 @@
 #include "../includes/server.hpp"
 #include "../includes/router.hpp"
 #include "../includes/graceful_shutdown.hpp"
+#include "../includes/utils.hpp"
 
 namespace beast = boost::beast;
 namespace http = beast::http;
