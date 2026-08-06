@@ -48,9 +48,11 @@ get_logger() {
  * 初始化日志系统，设置控制台和文件输出，以及日志格式和轮转策略。
  * 应该在程序入口处调用一次，以确保日志系统正确配置。
  * @param log_file日志文件路径，默认为 "./logs/http_server.log"
+ * @param log_level 日志最低级别（trace/debug/info/warning/error/fatal），默认为 "debug"
  */
 inline void
-init_logger(const std::string& log_file = "./logs/http_server.log") {
+init_logger(const std::string& log_file = "./logs/http_server.log",
+            const std::string& log_level = "debug") {
     using namespace server_logger;
     // 确保日志目录存在
     boost::filesystem::path log_path(log_file);
@@ -99,10 +101,17 @@ init_logger(const std::string& log_file = "./logs/http_server.log") {
     );
     logging::core::get()->add_sink(file_asink_ptr);
 
-    // 3. 设置全局最低级别（例如 DEBUG，可改为 INFO 以忽略 DEBUG）
-    // 当前是硬编码为 DEBUG，后续可以通过配置文件或环境变量进行调整，以适应不同的运行环境和需求
+    // 3. 设置全局最低级别，由 --log_level/-L 或 JSON 配置控制
+    // 非法值回退到 debug，保证最低日志可见性
+    trivial::severity_level             min_severity = trivial::debug;
+    if (log_level == "trace")           min_severity = trivial::trace;
+    else if (log_level == "info")       min_severity = trivial::info;
+    else if (log_level == "warning")    min_severity = trivial::warning;
+    else if (log_level == "error")      min_severity = trivial::error;
+    else if (log_level == "fatal")      min_severity = trivial::fatal;
+
     logging::core::get()->set_filter(
-        trivial::severity >= trivial::debug
+        trivial::severity >= min_severity
     );
 }
 

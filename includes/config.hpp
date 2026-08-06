@@ -21,6 +21,7 @@ struct config_values
     unsigned short      port_ = 8080;
     std::string         doc_root_ = ".";
     std::string         log_file_ = "./logs/http_server.log";
+    std::string         log_level_ = "debug";
     unsigned int        threads_ = 1;
     unsigned int        timeout_seconds_ = 30;
     std::size_t         max_body_size_ = 1 << 20;
@@ -52,6 +53,9 @@ valid_max_connections(uint64_t max_connections);
 bool
 valid_max_cache_entries(uint64_t max_cache_entries);
 
+bool
+valid_log_level(const std::string &level);
+
 // 配置类
 // 命令行参数 > 配置文件 > 默认值 逐层覆盖
 class configuration
@@ -80,6 +84,7 @@ public:
     unsigned short port() const;
     const std::string& doc_root() const;
     const std::string& log_file() const;
+    const std::string& log_level() const;
     unsigned int threads() const;
     unsigned int timeout_seconds() const;
     std::size_t max_body_size() const;

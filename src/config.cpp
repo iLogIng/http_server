@@ -28,6 +28,11 @@ server_config::configuration::
 log_file() const
 { return config_vals_.log_file_; }
 
+const std::string&
+server_config::configuration::
+log_level() const
+{ return config_vals_.log_level_; }
+
 unsigned int
 server_config::configuration::
 threads() const
@@ -111,6 +116,14 @@ valid_max_cache_entries(uint64_t max_cache_entries)
     return max_cache_entries < (static_cast<uint64_t>(1) << 31);
 }
 
+bool
+server_config::
+valid_log_level(const std::string &level)
+{
+    return level == "trace" || level == "debug" || level == "info" ||
+           level == "warning" || level == "error" || level == "fatal";
+}
+
 // 采用直接覆盖方案进行命令行参数的传入
 void server_config::configuration::
 apply_command_line(int argc, char *argv[])
@@ -123,6 +136,7 @@ apply_command_line(int argc, char *argv[])
         ("port,p", prog_opts::value<unsigned short>(), "Server port")
         ("doc_root,r", prog_opts::value<std::string>(), "Document root")
         ("log_file,l", prog_opts::value<std::string>(), "Log file path")
+        ("log_level,L", prog_opts::value<std::string>(), "Log level (trace/debug/info/warning/error/fatal)")
         ("threads,t", prog_opts::value<unsigned int>(), "Number of threads")
         ("timeout_seconds,s", prog_opts::value<unsigned int>(), "Timeout in seconds")
         ("max_body_size,b", prog_opts::value<size_t>(), "Maximum body size")
@@ -155,6 +169,8 @@ apply_command_line(int argc, char *argv[])
         this->config_vals_.doc_root_ = vm["doc_root"].as<std::string>();
     if(vm.count("log_file"))
         this->config_vals_.log_file_ = vm["log_file"].as<std::string>();
+    if(vm.count("log_level"))
+        this->config_vals_.log_level_ = vm["log_level"].as<std::string>();
     if(vm.count("threads"))
         this->config_vals_.threads_ = vm["threads"].as<unsigned int>();
     if(vm.count("timeout_seconds"))
@@ -201,6 +217,15 @@ apply_json_config(std::string path)
 
     if (json_values.contains("log_file") && json_values.at("log_file").is_string()) {
         this->config_vals_.log_file_ = std::string(json_values.at("log_file").as_string());
+    }
+
+    if (json_values.contains("log_level") && json_values.at("log_level").is_string()) {
+        std::string level{json_values.at("log_level").as_string()};
+        if(valid_log_level(level)) {
+            this->config_vals_.log_level_ = level;
+        } else {
+            LOG_WARNING << "Invalid log level in JSON:" << level;
+        }
     }
 
     if (json_values.contains("port") && json_values.at("port").is_number()) {
@@ -313,6 +338,7 @@ dump() const {
     LOG_INFO << "Port:                  " << config_vals_.port_;
     LOG_INFO << "Document Root:         " << config_vals_.doc_root_;
     LOG_INFO << "Log File:              " << config_vals_.log_file_;
+    LOG_INFO << "Log Level:             " << config_vals_.log_level_;
     LOG_INFO << "Threads:               " << config_vals_.threads_;
     LOG_INFO << "Timeout (sec):         " << config_vals_.timeout_seconds_;
     LOG_INFO << "Max Body Size:         " << config_vals_.max_body_size_ << " bytes";
