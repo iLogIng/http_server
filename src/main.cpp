@@ -18,7 +18,8 @@ using tcp = boost::asio::ip::tcp;
 int main(int argc, char* argv[])
 {
     server_config::configuration config(argc, argv);
-    server_logger::init_logger(config.log_file());
+    server_logger::init_logger(config.log_file(), config.log_level());
+    config.dump();
 
     LOG_INFO << "Starting HTTP server...";
 

@@ -327,7 +327,6 @@ configuration(int argc, char *argv[])
 
     // 命令行参数覆盖 JSON
     apply_command_line(argc, argv);
-    this->dump();
 }
 
 void
