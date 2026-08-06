@@ -1,6 +1,8 @@
 #pragma once
 
 #include <optional>
+#include <string>
+#include <ctime>
 
 #include <boost/beast.hpp>
 #include <boost/filesystem.hpp>
@@ -24,11 +26,11 @@ is_safe_path(beast::string_view path);
 std::string
 path_cat(beast::string_view base, beast::string_view path);
 
-// 规范化根目录路径（带缓存）
+// 规范化根目录路径
 const std::string
 get_normalized_doc_root(const std::string& raw_root);
 
-// 安全拼接并规范化路径（boost::filesystem，双重路径穿越防护）
+// 安全拼接并规范化路径
 std::string
 secure_file_cat(
     beast::string_view doc_root,
@@ -44,6 +46,32 @@ http::response<http::string_body>
 make_not_found(
     const http::request<http::string_body>& req,
     beast::string_view target);
+
+// 304 Not Modified：条件请求（If-None-Match / If-Modified-Since）命中时返回，无 body
+http::response<http::string_body>
+make_not_modified(
+    const http::request<http::string_body>& req,
+    beast::string_view etag,
+    beast::string_view last_modified);
+
+// 由修改时间与文件大小生成 ETag（格式 "mtime-size"）
+std::string
+make_etag(std::time_t mtime, std::size_t size);
+
+// time_t -> HTTP-date 格式
+std::string
+to_http_date(std::time_t t);
+
+// HTTP-date -> time_t，解析失败返回 false
+bool
+parse_http_date(beast::string_view s, std::time_t& out);
+
+// 条件请求判定 RFC 7232 : If-None-Match 优先于 If-Modified-Since
+bool
+is_not_modified(
+    const http::request<http::string_body>& req,
+    beast::string_view etag,
+    std::time_t last_modified_time);
 
 http::response<http::string_body>
 make_method_not_allowed(

@@ -1,6 +1,7 @@
 #include "../includes/server.hpp"
 
 #include "../includes/logger.hpp"
+#include "../includes/utils.hpp"
 
 std::atomic<std::size_t> server_host::session::active_sessions_{0};
 
@@ -55,11 +56,11 @@ do_read()
 {
     stream_.expires_after(std::chrono::seconds(config_.timeout_seconds()));
 
-    // emplace 新的分析器（parser 为单次使用设计，官方推荐 stored in optional）
     parser_.emplace();
     parser_->body_limit(config_.max_body_size());
 
-    // 读请求（parser_ 内置 body_limit，超限时 async_read 返回 413）
+    // 读请求
+    // parser_ 内置 body_limit，超限时 async_read 返回 413
     http::async_read(stream_, buffer_, *parser_,
         beast::bind_front_handler(
             &session::on_read,
@@ -75,7 +76,7 @@ on_read(
 {
     boost::ignore_unused(bytes_transferred);
 
-    // 意味着他们关闭了连接
+    // 关闭了连接
     if(ec == http::error::end_of_stream)
         return do_close();
 
@@ -143,9 +144,7 @@ on_write(
     LOG_INFO << req_info_ << " " << elapsed << "ms";
 
     // 若不为保持连接
-    if(!keep_alive)
-    {
-        // 这意味着我们应该关闭连接，通常因为响应指明了 "Connection: close" 语义
+    if(!keep_alive) {
         return do_close();
     }
 

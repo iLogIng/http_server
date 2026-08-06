@@ -9,6 +9,7 @@
 
 #include <shared_mutex>
 #include <map>
+#include <ctime>
 
 namespace server_service
 {
@@ -19,14 +20,22 @@ namespace fs = boost::filesystem;
 // 基于一个网站根目录提供服务
 class static_file_service
 {
+    // 缓存条目 文件内容 + 元数据（ETag / Last-Modified，供条件请求 304 使用）
+    struct cached_file
+    {
+        std::shared_ptr<const std::string> content;
+        std::string etag;
+        std::string last_modified;
+        std::time_t last_modified_time = 0;
+    };
     using file_body_type = http::file_body::value_type;
-    using lru_cache_type = server_cache::lru_cache<std::string, std::shared_ptr<const std::string>>;
+    using lru_cache_type = server_cache::lru_cache<std::string, cached_file>;
 
 private:
     const server_config::configuration &config_;
     mutable lru_cache_type lru_cache_;
     // 读多写少，使用 shared_mutex允许并发读取
-    // std::map + 透明比较器：以 string_view 异构查找，免构造临时 key
+    // std::map + 透明比较器 以 string_view 异构查找，免构造临时 key
     mutable std::shared_mutex path_mutex_;
     mutable std::map<std::string, std::string, std::less<>> path_cache_;
     static constexpr std::size_t max_path_cache_entries = 4096;
@@ -58,7 +67,7 @@ private:
     // 共享字符串体，避免拷贝
     struct shared_string_body
     {
-        using value_type = lru_cache_type::value_type;
+        using value_type = std::shared_ptr<const std::string>;
         class writer
         {
             private:

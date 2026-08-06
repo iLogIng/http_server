@@ -1,6 +1,7 @@
 #include "../includes/utils.hpp"
 
 #include <string>
+#include <ctime>
 #include <unordered_map>
 
 
@@ -250,6 +251,76 @@ make_payload_too_large(
     LOG_WARNING << "Payload Too Large: " << payload_size << " > " << max_size;
     res.prepare_payload();
     return res;
+}
+
+server_utils::http::response<server_utils::http::string_body>
+server_utils::
+make_not_modified(
+    const http::request<http::string_body>& req,
+    beast::string_view etag,
+    beast::string_view last_modified)
+{
+    // 304 不允许携带 body，仅回 ETag/Last-Modified 头
+    http::response<http::string_body> res{http::status::not_modified, req.version()};
+    res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
+    res.set(http::field::etag, etag);
+    res.set(http::field::last_modified, last_modified);
+    res.keep_alive(req.keep_alive());
+    res.content_length(0);
+    return res;
+}
+
+std::string
+server_utils::
+make_etag(std::time_t mtime, std::size_t size)
+{
+    return "\"" + std::to_string(mtime) + "-" + std::to_string(size) + "\"";
+}
+
+std::string
+server_utils::
+to_http_date(std::time_t t)
+{
+    std::tm tm{};
+    gmtime_r(&t, &tm);
+    char buf[64];
+    std::strftime(buf, sizeof(buf), "%a, %d %b %Y %H:%M:%S GMT", &tm);
+    return buf;
+}
+
+bool
+server_utils::
+parse_http_date(beast::string_view s, std::time_t& out)
+{
+    std::string str(s);
+    std::tm tm{};
+    const char* p = strptime(str.c_str(), "%a, %d %b %Y %H:%M:%S GMT", &tm);
+    if (p && *p == '\0') {
+        out = timegm(&tm);
+        return true;
+    }
+    return false;
+}
+
+bool
+server_utils::
+is_not_modified(
+    const http::request<http::string_body>& req,
+    beast::string_view etag,
+    std::time_t last_modified_time)
+{
+    auto inm = req[http::field::if_none_match];
+    if (!inm.empty()) {
+        return inm == "*" || inm == etag;
+    }
+    auto ims = req[http::field::if_modified_since];
+    if (!ims.empty()) {
+        std::time_t since;
+        if (parse_http_date(ims, since)) {
+            return last_modified_time <= since;
+        }
+    }
+    return false;
 }
 
 server_utils::http::response<server_utils::http::string_body>

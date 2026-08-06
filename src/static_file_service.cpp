@@ -5,6 +5,7 @@
 
 #include <string>
 #include <fstream>
+#include <ctime>
 
 server_service::static_file_service::
 static_file_service(const server_config::configuration &config)
@@ -28,17 +29,23 @@ handle_GET_request(
     const std::string& full_path
 ) const
 {
-    // 检查缓存（传引用，免构造临时 key）
+    // 检查缓存
     auto cached = lru_cache_.get(full_path);
     // 缓存命中
     if(cached) {
+        // 条件请求 If-None-Match / If-Modified-Since -> 304 空 body
+        if(server_utils::is_not_modified(req, cached->etag, cached->last_modified_time)) {
+            return server_utils::make_not_modified(req, cached->etag, cached->last_modified);
+        }
         http::response<shared_string_body>
         res{http::status::ok, req.version()};
         res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
         res.set(http::field::content_type, server_utils::mime_type(full_path));
-        res.content_length(cached.value()->size());
+        res.set(http::field::etag, cached->etag);
+        res.set(http::field::last_modified, cached->last_modified);
+        res.content_length(cached->content->size());
         res.keep_alive(req.keep_alive());
-        res.body() = cached.value();
+        res.body() = cached->content;
         return res;
     }
 
@@ -58,13 +65,21 @@ handle_GET_request(
     auto content = std::make_shared<std::string>(size, '\0');
     file.seekg(0);
     file.read(content->data(), size);
-    // 存入缓存
-    lru_cache_.put(std::string(full_path), content);
+
+    // 生成 ETag / Last-Modified，随内容一并缓存
+    boost::system::error_code ec;
+    const std::time_t mtime_t = fs::last_write_time(full_path, ec);
+    const std::string etag = server_utils::make_etag(mtime_t, size);
+    const std::string last_modified = server_utils::to_http_date(mtime_t);
+    lru_cache_.put(full_path,
+        cached_file{content, etag, last_modified, mtime_t});
 
     // 返回 string_body 响应
     http::response<shared_string_body> res{http::status::ok, req.version()};
     res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
     res.set(http::field::content_type, server_utils::mime_type(full_path));
+    res.set(http::field::etag, etag);
+    res.set(http::field::last_modified, last_modified);
     res.content_length(content->size());
     res.keep_alive(req.keep_alive());
     res.body() = content;
@@ -82,10 +97,16 @@ handle_HEAD_request(
     // 检查缓存
     auto cached = lru_cache_.get(full_path);
     if (cached) {
+        // 条件请求 -> 304 空 body
+        if(server_utils::is_not_modified(req, cached->etag, cached->last_modified_time)) {
+            return server_utils::make_not_modified(req, cached->etag, cached->last_modified);
+        }
         http::response<http::empty_body> res{http::status::ok, req.version()};
         res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
         res.set(http::field::content_type, server_utils::mime_type(full_path));
-        res.content_length(cached.value()->size());
+        res.set(http::field::etag, cached->etag);
+        res.set(http::field::last_modified, cached->last_modified);
+        res.content_length(cached->content->size());
         res.keep_alive(req.keep_alive());
         return res;
     }
@@ -112,9 +133,15 @@ handle_HEAD_request(
         return server_utils::make_payload_too_large(req, this->config_.max_body_size(), size);
     }
 
+    // 未命中 读取元数据生成 ETag/Last-Modified
+    boost::system::error_code ec2;
+    const std::time_t mtime_t = fs::last_write_time(full_path, ec2);
+
     http::response<http::empty_body> res{http::status::ok, req.version()};
     res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
     res.set(http::field::content_type, server_utils::mime_type(full_path));
+    res.set(http::field::etag, server_utils::make_etag(mtime_t, size));
+    res.set(http::field::last_modified, server_utils::to_http_date(mtime_t));
     res.content_length(size);
     res.keep_alive(req.keep_alive());
 
