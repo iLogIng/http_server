@@ -1,7 +1,7 @@
 CXX = g++
 STD_VERSION = -std=c++17
 
-CXXFLAGS = $(STD_VERSION) -DBOOST_LOG_DYN_LINK -g -Wall Wextra
+CXXFLAGS = $(STD_VERSION) -DBOOST_LOG_DYN_LINK -g -Wall -Wextra
 
 BOOST_LIBS = -lboost_system -lboost_filesystem -lboost_thread \
              -lboost_log -lboost_log_setup \

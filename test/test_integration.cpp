@@ -154,6 +154,26 @@ TEST_F(IntegrationTest, GetNonexistentFileReturns404)
     EXPECT_EQ(res.result(), http::status::not_found);
 }
 
+TEST_F(IntegrationTest, GetDirectoryPathResolvesToIndexHtml)
+{
+    // 带尾斜杠目录：/docs/ 应解析为 /docs/index.html
+    auto res = send_request(http::verb::get, "/docs/");
+    EXPECT_EQ(res.result(), http::status::ok);
+    EXPECT_EQ(res[http::field::content_type], "text/html");
+    EXPECT_FALSE(res.body().empty());
+
+    // 无尾斜杠目录：/docs 应同样解析为 index.html，而非读取目录内容
+    auto res2 = send_request(http::verb::get, "/docs");
+    EXPECT_EQ(res2.result(), http::status::ok);
+    EXPECT_EQ(res2.body(), res.body());
+}
+
+TEST_F(IntegrationTest, GetDirectoryWithoutIndexHtmlReturns404)
+{
+    auto res = send_request(http::verb::get, "/nonexistent-dir/");
+    EXPECT_EQ(res.result(), http::status::not_found);
+}
+
 TEST_F(IntegrationTest, GetApiHelloEndpoint)
 {
     auto res = send_request(http::verb::get, "/api/hello");
