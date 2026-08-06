@@ -24,7 +24,7 @@
 >
 > 连接限流（503 + Retry-After 头） LRU 文件内容缓存（线程安全，可配置容量）
 >
-> Google Test 单元测试 + 端到端集成测试（59 用例全通过）
+> Google Test 单元测试 + 端到端集成测试（71 用例全通过）
 
 -----
 
@@ -184,7 +184,7 @@ wrk -t6 -c400 -d30s http://127.0.0.1:8080/index.html
   - 优雅关闭模块，处理 SIGINT/SIGTERM 信号
 
 - ***test/***
-  - Google Test 单元测试（59 用例覆盖 config、logger、router、utils、集成测试模块）
+  - Google Test 单元测试（71 用例覆盖 config、logger、router、utils、集成测试模块）
 
 -----
 

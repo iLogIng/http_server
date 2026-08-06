@@ -61,16 +61,15 @@
 
 > 来源：`docs/stress-test/stress-test-i5-1235u.md` 压测结论 + 代码检视
 > 结论：warm 缓存下 10 万 QPS，服务端本体健康；c600+ 下滑混有同机 wrk 客户端竞争，需分离测量确认
+> 最新实测与已完成优化见 [TODO-perf.md](./TODO-perf.md)：隔离测试达 nginx 的 ~60%，关访问日志后 c100 ~194k
 
 ### 阶段 0 — 测量校正
 - [ ] wrk 放到独立机器/容器重测 c600-c1000，确定服务端真实上限（避免在测量假象上投入优化）
 
 ### 阶段 1 — 高性价比改动
-- [ ] **缓存 get() 消除整份拷贝**：`lru_cache` 改存 `std::shared_ptr<const std::string>`，`get()` 返回 shared_ptr。当前 warm 路径每次请求复制整份文件内容（`static_file_service.cpp:30-37`），是最大单项开销
 - [ ] **socket 收发缓冲调优**：设置 `send_buffer_size` / `receive_buffer_size`
 
 ### 阶段 2 — 协议级优化
-- [ ] **ETag / Last-Modified + 条件 GET**：二次访问返回 304 减少传输量；叠加 `Cache-Control`
 - [ ] **超时与限流细化**：区分读超时与排队超时；限流按连接粒度（当前整机 503）
 
 ### 阶段 3 — 性能深水区（视阶段 0 的压测结果决定）
@@ -85,16 +84,18 @@
 
 | 功能 | 说明 |
 |:--|:--|
-| 配置文件 | JSON + 命令行，优先级覆盖 |
+| 配置文件 | JSON + 命令行，优先级覆盖；`--log_level/-L` 六级日志可按需关闭 |
 | 请求日志 | 方法 + 路径 + 耗时 |
 | 业务解耦 | `request_handler` 独立类 |
 | 简单路由 | 精确 + 前缀匹配，含 `/api/hello` |
-| LRU 缓存 | 泛型模板，`std::mutex` 线程安全，集成静态服务 |
+| 静态服务 | 目录请求解析为 `index.html`；warm 路径零系统调用（路径缓存免 statx） |
+| LRU 缓存 | 泛型模板，`shared_ptr` 零拷贝，key 免临时分配 |
+| 条件请求 | ETag/Last-Modified，If-None-Match / If-Modified-Since -> 304 |
 | 连接限流 | 503 + Retry-After |
-| 单元测试 | 59 用例全通过 |
-| 压测报告 | `stress-test/` 多线程多并发曲线 |
+| 单元测试 | 71 用例全通过 |
+| 压测报告 | `docs/stress-test/` 多线程多并发曲线 |
 
-> 设计决策记录：LRU 选型 / 线程安全 / 路由前缀匹配而非正则 —— 面试展示时突出这些思考。
+> 设计决策记录：LRU 选型 / 线程安全 / 路由前缀匹配而非正则 / 路径解析缓存 —— 面试展示时突出这些思考。
 
 ---
 
