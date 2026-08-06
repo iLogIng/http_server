@@ -73,6 +73,12 @@ handle_GET_request(
     const std::time_t mtime_t = fs::last_write_time(full_path, ec);
     const std::string etag = server_utils::make_etag(mtime_t, size);
     const std::string last_modified = server_utils::to_http_date(mtime_t);
+
+    // 条件请求 冷缓存路径同样生效
+    if(server_utils::is_not_modified(req, etag, mtime_t)) {
+        return server_utils::make_not_modified(req, etag, last_modified);
+    }
+
     lru_cache_.put(full_path,
         cached_file{content, etag, last_modified, mtime_t});
 
@@ -138,12 +144,19 @@ handle_HEAD_request(
     // 未命中 读取元数据生成 ETag/Last-Modified
     boost::system::error_code ec2;
     const std::time_t mtime_t = fs::last_write_time(full_path, ec2);
+    const std::string etag = server_utils::make_etag(mtime_t, size);
+    const std::string last_modified = server_utils::to_http_date(mtime_t);
+
+    // 条件请求 冷缓存路径同样生效
+    if(server_utils::is_not_modified(req, etag, mtime_t)) {
+        return server_utils::make_not_modified(req, etag, last_modified);
+    }
 
     http::response<http::empty_body> res{http::status::ok, req.version()};
     res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
     res.set(http::field::content_type, server_utils::mime_type(full_path));
-    res.set(http::field::etag, server_utils::make_etag(mtime_t, size));
-    res.set(http::field::last_modified, server_utils::to_http_date(mtime_t));
+    res.set(http::field::etag, etag);
+    res.set(http::field::last_modified, last_modified);
     res.content_length(size);
     res.keep_alive(req.keep_alive());
 
@@ -172,7 +185,7 @@ server_service::static_file_service::handle_request(
 
     std::string full_path;
     {
-        // 优先查路径解析缓存：命中即跳过 weakly_canonical / is_directory 的系统调用
+        // 优先查路径解析缓存 命中即跳过 weakly_canonical / is_directory 的系统调用
         std::shared_lock lock(path_mutex_);
         auto it = path_cache_.find(target);
         if (it != path_cache_.end()) {
@@ -180,7 +193,7 @@ server_service::static_file_service::handle_request(
         }
     }
     if (full_path.empty()) {
-        // 缓存未命中：规范化 + 目录解析，仅 首次或缓存淘汰后 执行
+        // 缓存未命中 规范化 + 目录解析，仅 首次或缓存淘汰后 执行
         full_path = server_utils::secure_file_cat(this->config_.doc_root(), target);
         if (full_path.empty()) {
             return server_utils::make_bad_request(req, req.target());

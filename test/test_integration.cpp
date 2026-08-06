@@ -221,7 +221,7 @@ TEST_F(IntegrationTest, GetWithMatchingEtagReturns304)
     auto etag = first[http::field::etag];
     ASSERT_FALSE(etag.empty());
 
-    // 条件 GET：If-None-Match 命中 → 304 空 body
+    // 条件 GET If-None-Match 命中 -> 304 空 body
     auto res = send_request_with_headers(http::verb::get, "/index.html",
         {{"If-None-Match", std::string(etag)}});
     EXPECT_EQ(res.result(), http::status::not_modified);
@@ -230,6 +230,10 @@ TEST_F(IntegrationTest, GetWithMatchingEtagReturns304)
 
 TEST_F(IntegrationTest, GetWithMismatchedEtagReturns200)
 {
+    // 先 GET 一次填充缓存（测试需自包含，验证缓存命中分支的不匹配）
+    auto first = send_request(http::verb::get, "/index.html");
+    ASSERT_EQ(first.result(), http::status::ok);
+
     auto res = send_request_with_headers(http::verb::get, "/index.html",
         {{"If-None-Match", "\"wrong-etag\""}});
     EXPECT_EQ(res.result(), http::status::ok);
@@ -238,6 +242,10 @@ TEST_F(IntegrationTest, GetWithMismatchedEtagReturns200)
 
 TEST_F(IntegrationTest, GetWithNewerIfModifiedSinceReturns304)
 {
+    // 先 GET 一次填充缓存（测试需自包含，验证缓存命中分支的时间戳逻辑）
+    auto first = send_request(http::verb::get, "/index.html");
+    ASSERT_EQ(first.result(), http::status::ok);
+
     // 未来时间戳 → 文件未修改 → 304
     auto res = send_request_with_headers(http::verb::get, "/index.html",
         {{"If-Modified-Since", "Sun, 06 Nov 2099 08:49:37 GMT"}});
