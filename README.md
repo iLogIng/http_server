@@ -132,6 +132,26 @@ cloudflared tunnel --url http://127.0.0.1:8080 --protocol http2 --edge-ip-versio
 - **530**：边缘连不上隧道 -> 加 `--edge-ip-version 4 --protocol http2`，强制 IPv4 + TCP 443 ，绕过运营商的 IPv6/7844 拦截
 - **502**：隧道已通但够不到服务 -> origin 写显式 `http://127.0.0.1:8080`（`localhost` 会被解析成 `::1`）
 
+### 可复现基准
+
+> 平台：i5-1235U（12 逻辑线程）/ 15GB / Fedora 44；目标文件 `app/index.html`（9KB）
+
+```bash
+# 服务端：6 线程 + 关访问日志 访问日志会拖慢 25~38%
+./http_server --doc_root ./app/ --threads 6 -L warning
+
+# 压测：wrk 与服务端配比 6/6 最接近真实能力，避免同机客户端抢占
+wrk -t6 -c100 -d30s http://127.0.0.1:8080/index.html
+wrk -t6 -c400 -d30s http://127.0.0.1:8080/index.html
+```
+
+| 并发 | http_server | nginx | 比率 |
+|:---:|:---:|:---:|:---:|
+| c100 | ~194k | ~309k | ~62% |
+| c400 | ~157k | ~283k | ~56% |
+
+> nginx 对照组：root 指向同一 `./app/`，access_log off
+
 -----
 
 ## 项目结构
