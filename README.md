@@ -194,6 +194,8 @@ wrk -t6 -c400 -d30s http://127.0.0.1:8080/index.html
 >
 > [压力测试](./docs/stress-test/stress-test-task.md) — 压力测试，见文件参考一栏
 >
+> [性能优化](./docs/stress-test/perf.md) — 优化方法、实测数据
+>
 > [TODO](./TODO.md) — 功能扩展清单
 
 -----

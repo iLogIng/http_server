@@ -59,7 +59,7 @@
 
 > 来源：`docs/stress-test/stress-test-i5-1235u.md` 压测结论 + 代码检视
 > 结论：warm 缓存下 10 万 QPS，服务端本体健康；c600+ 下滑混有同机 wrk 客户端竞争，需分离测量确认
-> 最新实测与已完成优化见 [TODO-perf.md](./TODO-perf.md)：隔离测试达 nginx 的 ~60%，关访问日志后 c100 ~194k
+> 最新实测与已完成优化见 [perf.md](./docs/stress-test/perf.md)：隔离测试达 nginx 的 ~60%，关访问日志后 c100 ~194k
 
 ### 阶段 0 — 测量校正
 - [ ] wrk 放到独立机器/容器重测 c600-c1000，确定服务端真实上限（避免在测量假象上投入优化）
