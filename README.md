@@ -35,40 +35,6 @@
 > **Boost 组件** Asio / Beast / Filesystem / JSON / Log / Program Options / Thread
 >
 
-### 容器运行（Docker / Podman）
-
-```bash
-# 构建
-# （国内网络建议加 --build-arg 换国内 apt 源，绕开代理/加速）
-## docker :
-docker build -t http-server:latest .
-## podman :
-podman build -t http-server:latest .
-
-# 运行
-# （默认监听 0.0.0.0:8080，非 root 用户，threads=2）
-docker run --rm -p 8080:8080 http-server:latest
-## podman 类似
-
-# 验证
-curl http://localhost:8080/
-```
-
-- 国内网络构建：`docker build --build-arg APT_MIRROR=mirrors.tuna.tsinghua.edu.cn -t http-server:latest .`
-- 镜像约 99MB，基于 ubuntu:24.04 + Boost 1.83（多阶段构建，仅含运行时库）。
-- 自定义静态目录：`docker run --rm -p 8080:8080 -v $(pwd)/my_site:/srv/app http-server:latest`
-
-**容器管理**
-
-```bash
-docker stop http-server-test       # 停止容器
-docker start http-server-test      # stop 后再次启动
-docker restart http-server-test    # 重启
-docker logs -f http-server-test    # 日志
-docker rm -f http-server-test      # 停止并删除容器
-docker image rm http_server:test   # 连镜像一起删
-```
-
 ### 构建可执行文件
 
 ```bash
@@ -103,6 +69,67 @@ docker image rm http_server:test   # 连镜像一起删
     "max_cache_entries":64
 }
 ```
+
+### 容器运行
+
+> Docker / Podman
+
+```bash
+# 构建
+# （国内网络建议加 --build-arg 换国内 apt 源，绕开代理/加速）
+## docker :
+docker build -t http-server:latest .
+## podman :
+podman build -t http-server:latest .
+
+# 运行
+# （默认监听 0.0.0.0:8080，非 root 用户，threads=2）
+docker run --rm -p 8080:8080 http-server:latest
+## podman 类似
+
+# 验证
+curl http://localhost:8080/
+```
+
+- 国内网络构建：`docker build --build-arg APT_MIRROR=mirrors.tuna.tsinghua.edu.cn -t http-server:latest .`
+- 镜像约 99MB，基于 ubuntu:24.04 + Boost 1.83（多阶段构建，仅含运行时库）。
+- 自定义静态目录：`docker run --rm -p 8080:8080 -v $(pwd)/my_site:/srv/app http-server:latest`
+
+**容器管理**
+
+```bash
+docker stop http-server-test       # 停止容器
+docker start http-server-test      # stop 后再次启动
+docker restart http-server-test    # 重启
+docker logs -f http-server-test    # 日志
+docker rm -f http-server-test      # 停止并删除容器
+docker image rm http_server:test   # 连镜像一起删
+```
+
+### 公网部署测试
+
+> 使用 cloudflared 搭建临时隧道
+> 将本机容器暴露成公网 HTTPS URL ，用于公网部署验证
+
+```bash
+# 1. 确认容器已运行
+curl http://127.0.0.1:8080/            # 期望 200
+
+# 2. 启动临时隧道
+cloudflared tunnel --url http://127.0.0.1:8080
+
+## 中国大陆：IPv4 edge + HTTP/2，绕开运营商拦截；origin 用显式 127.0.0.1
+cloudflared tunnel --url http://127.0.0.1:8080 --protocol http2 --edge-ip-version 4
+```
+
+- 等待日志出现 `Registered tunnel connection` 后，从输出取公网 URL（检查日志中类似 `https://xxxx.trycloudflare.com` URL），任意设备访问验证
+- 实测（移动宽带 + IPv4 edge）：根路径 200、404 透传正常、连续 10 次全 200、100 并发全 200；边缘往返约 0.7~1.3s
+- *注意：*quick tunnel 为临时 URL，重启会变，仅用于验证/展示；长期部署请改用命名隧道或镜像分发
+
+**常见问题**
+
+- **530**：边缘连不上隧道 -> 加 `--edge-ip-version 4 --protocol http2`，强制 IPv4 + TCP 443 ，绕过运营商的 IPv6/7844 拦截
+- **502**：隧道已通但够不到服务 -> origin 写显式 `http://127.0.0.1:8080`（`localhost` 会被解析成 `::1`）
 
 -----
 
@@ -144,7 +171,7 @@ docker image rm http_server:test   # 连镜像一起删
 
 > [架构设计](./docs/architecture.md) — 结构简图、类图与三层设计
 >
-> [压力测试](./stress-test/stress-test.md)
+> [压力测试](./docs/stress-test/stress-test-task.md) — 压力测试，见文件参考一栏
 >
 > [TODO](./TODO.md) — 功能扩展清单
 
