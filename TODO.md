@@ -36,7 +36,8 @@
 
 ### 阶段二 · 协议完整性
 
-- [ ] **Range 请求**：解析 `Range` 头，用 `http::response<http::file_body>` 的 `seek` 实现断点续传；为 sendfile 打底
+- [x] **Range 请求**：解析 `Range` 头，用 `http::response<http::file_body>` 的 `seek` 实现断点续传；为 sendfile 打底
+- [ ] **gzip 压缩传输**：按 `Accept-Encoding` 压缩文本响应，加 `Content-Encoding: gzip` + `Vary`
 - [ ] **DELETE/PUT 方法**：路由扩展动态 API（DELETE 需权限校验）
 
 ### 阶段三 · HTTPS（TLS）
@@ -51,9 +52,6 @@
 
 - [ ] **异步日志**：日志线程 + 队列 + 条件变量，避免日志阻塞 I/O 线程
 - [ ] **/metrics 统计接口**：暴露 QPS、活跃连接数、请求/错误计数；承接压测报告的可观测性
-- [ ] **版本号**：功能补齐后从 v0.7.0 升级到 v1.0
-- [ ] **C++20 协程**（可选）：迁移 Asio C++20 协程模型
-- [ ] **CMake 安装目标**（可选）：`install(TARGETS ...)` 支持 `cmake --install`
 
 ---
 
