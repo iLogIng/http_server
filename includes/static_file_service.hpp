@@ -8,7 +8,7 @@
 #include <boost/filesystem.hpp>
 
 #include <shared_mutex>
-#include <unordered_map>
+#include <map>
 
 namespace server_service
 {
@@ -26,8 +26,9 @@ private:
     const server_config::configuration &config_;
     mutable lru_cache_type lru_cache_;
     // 读多写少，使用 shared_mutex允许并发读取
+    // std::map + 透明比较器：以 string_view 异构查找，免构造临时 key
     mutable std::shared_mutex path_mutex_;
-    mutable std::unordered_map<std::string, std::string> path_cache_;
+    mutable std::map<std::string, std::string, std::less<>> path_cache_;
     static constexpr std::size_t max_path_cache_entries = 4096;
 
 public:
@@ -45,12 +46,12 @@ private:
 
     http::message_generator handle_GET_request(
         const http::request<http::string_body>& req,
-        beast::string_view full_path
+        const std::string& full_path
     ) const;
 
     http::message_generator handle_HEAD_request(
         const http::request<http::string_body>& req,
-        beast::string_view full_path
+        const std::string& full_path
     ) const;
 
 private:

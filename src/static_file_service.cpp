@@ -25,11 +25,11 @@ server_service::http::message_generator
 server_service::static_file_service::
 handle_GET_request(
     const http::request<http::string_body>& req,
-    beast::string_view full_path
+    const std::string& full_path
 ) const
 {
-    // 检查缓存
-    auto cached = lru_cache_.get(std::string{full_path});
+    // 检查缓存（传引用，免构造临时 key）
+    auto cached = lru_cache_.get(full_path);
     // 缓存命中
     if(cached) {
         http::response<shared_string_body>
@@ -76,11 +76,11 @@ server_service::http::message_generator
 server_service::static_file_service::
 handle_HEAD_request(
     const http::request<http::string_body>& req,
-    beast::string_view full_path
+    const std::string& full_path
 ) const
 {
     // 检查缓存
-    auto cached = lru_cache_.get(std::string(full_path));
+    auto cached = lru_cache_.get(full_path);
     if (cached) {
         http::response<http::empty_body> res{http::status::ok, req.version()};
         res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
@@ -145,7 +145,7 @@ server_service::static_file_service::handle_request(
     {
         // 优先查路径解析缓存：命中即跳过 weakly_canonical / is_directory 的系统调用
         std::shared_lock lock(path_mutex_);
-        auto it = path_cache_.find(std::string(target));
+        auto it = path_cache_.find(target);
         if (it != path_cache_.end()) {
             full_path = it->second;
         }
