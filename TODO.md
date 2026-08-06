@@ -59,7 +59,7 @@
 
 ## 二、性能优化
 
-> 来源：`stress-test/neo-stress-test.md` 压测结论 + 代码检视
+> 来源：`docs/stress-test/stress-test-i5-1235u.md` 压测结论 + 代码检视
 > 结论：warm 缓存下 10 万 QPS，服务端本体健康；c600+ 下滑混有同机 wrk 客户端竞争，需分离测量确认
 
 ### 阶段 0 — 测量校正

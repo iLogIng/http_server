@@ -6,6 +6,7 @@
 |:---|:---|:---|
 |CI/CD流水线|CI/CD持续集成与持续部署流水线|[ci-cd](./ci-cd.md)|
 |架构设计|结构简图、核心类图、三层设计|[architecture](./architecture.md)|
+|压力测试|wrk 压测任务规范、报告格式与多平台基准数据|[stress-test](./stress-test/stress-test-task.md)|
 
 ## 基础支撑层 (Foundation)
 
