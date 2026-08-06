@@ -62,6 +62,24 @@ private:
         const std::string& full_path
     ) const;
 
+    // 构建 GET 内容响应：304 优先 → Range（206/416）→ 200
+    http::message_generator build_content_response(
+        const http::request<http::string_body>& req,
+        const std::string& full_path,
+        const std::shared_ptr<const std::string>& content,
+        const std::string& etag,
+        const std::string& last_modified,
+        std::time_t last_modified_time) const;
+
+    // 构建 HEAD 响应：同上，但无 body
+    http::message_generator build_head_response(
+        const http::request<http::string_body>& req,
+        const std::string& full_path,
+        std::size_t total,
+        const std::string& etag,
+        const std::string& last_modified,
+        std::time_t last_modified_time) const;
+
 private:
     // 共享字符串体，避免拷贝
     struct shared_string_body
@@ -69,27 +87,61 @@ private:
         using value_type = std::shared_ptr<const std::string>;
         class writer
         {
-            private:
+        private:
             value_type const& body_;
 
-            public:
-                using const_buffers_type = boost::asio::const_buffer;
+        public:
+            using const_buffers_type = boost::asio::const_buffer;
 
-                template<bool isRequest, class Fields>
-                explicit writer(
-                    http::header<isRequest, Fields> const&,
-                    value_type const& body
-                )   : body_(body) {}
+            template<bool isRequest, class Fields>
+            explicit writer(
+                http::header<isRequest, Fields> const&,
+                value_type const& body
+            )   : body_(body) {}
 
-                void init(boost::beast::error_code& ec) const { ec = {}; }
+            void init(boost::beast::error_code& ec) const { ec = {}; }
 
-                boost::optional<std::pair<const_buffers_type, bool>>
-                get(boost::beast::error_code& ec) const {
-                    ec = {};
-                    return {
-                        {const_buffers_type{body_->data(), body_->size()}, false}
-                    };
-                }
+            boost::optional<std::pair<const_buffers_type, bool>>
+            get(boost::beast::error_code& ec) const {
+                ec = {};
+                return {
+                    {const_buffers_type{body_->data(), body_->size()}, false}
+                };
+            }
+        };
+    };
+
+    struct shared_slice_body
+    {
+        struct value_type
+        {
+            std::shared_ptr<const std::string> data;
+            std::size_t offset = 0;
+            std::size_t length = 0;
+        };
+        class writer
+        {
+        private:
+            value_type const& body_;
+
+        public:
+            using const_buffers_type = boost::asio::const_buffer;
+
+            template<bool isRequest, class Fields>
+            explicit writer(
+                http::header<isRequest, Fields> const&,
+                value_type const& body
+            )   : body_(body) {}
+
+            void init(boost::beast::error_code& ec) const { ec = {}; }
+
+            boost::optional<std::pair<const_buffers_type, bool>>
+            get(boost::beast::error_code& ec) const {
+                ec = {};
+                return {
+                    {const_buffers_type{body_.data->data() + body_.offset, body_.length}, false}
+                };
+            }
         };
     };
 };

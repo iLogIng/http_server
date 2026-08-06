@@ -9,6 +9,47 @@
 
 namespace fs = boost::filesystem;
 
+namespace server_service {
+namespace {
+
+// Range 求解结果 状态码 + 区间 + Content-Range 头
+struct range_result
+{
+    http::status status = http::status::ok;
+    std::size_t start = 0;
+    std::size_t length = 0;
+    std::string content_range;   // 空 = 未应用 Range
+};
+
+// 解析 Range 头并求解
+// 无头/非法/多区间 -> 200；不可满足 → 416
+range_result
+apply_range(const http::request<http::string_body>& req, std::size_t total)
+{
+    range_result res;
+    res.length = total;
+    if (req[http::field::range].empty()) {
+        return res;
+    }
+    std::vector<server_utils::byte_range> ranges;
+    if (server_utils::parse_range_header(req[http::field::range], ranges) && ranges.size() == 1) {
+        if (server_utils::resolve_range(ranges[0], total, res.start, res.length)) {
+            res.status = http::status::partial_content;
+            res.content_range = "bytes " + std::to_string(res.start) + "-"
+                + std::to_string(res.start + res.length - 1) + "/" + std::to_string(total);
+        } else {
+            res.status = http::status::range_not_satisfiable;
+            res.length = 0;
+            res.content_range = "bytes */" + std::to_string(total);
+        }
+    }
+    // 非法/多区间 保持 200，length = total，无 Content-Range
+    return res;
+}
+
+} // namespace
+} // namespace server_service
+
 server_service::static_file_service::
 static_file_service(const server_config::configuration &config)
     : config_(config)
@@ -24,6 +65,93 @@ as_handler() const {
     };
 }
 
+// 构建 响应体
+// 304 优先 -> Range（206/416）-> 200
+server_service::http::message_generator
+server_service::static_file_service::
+build_content_response(
+    const http::request<http::string_body>& req,
+    const std::string& full_path,
+    const std::shared_ptr<const std::string>& content,
+    const std::string& etag,
+    const std::string& last_modified,
+    std::time_t last_modified_time) const
+{
+    // 条件请求 -> 304 优先于 Range
+    if(server_utils::is_not_modified(req, etag, last_modified_time)) {
+        return server_utils::make_not_modified(req, etag, last_modified);
+    }
+
+    auto range = apply_range(req, content->size());
+
+    // 206 Range 满足，切片发送
+    if(range.status == http::status::partial_content) {
+        http::response<shared_slice_body> res{http::status::partial_content, req.version()};
+        res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
+        res.set(http::field::content_type, server_utils::mime_type(full_path));
+        res.set(http::field::etag, etag);
+        res.set(http::field::last_modified, last_modified);
+        res.set(http::field::content_range, range.content_range);
+        res.content_length(range.length);
+        res.keep_alive(req.keep_alive());
+        res.body() = shared_slice_body::value_type{content, range.start, range.length};
+        return res;
+    }
+
+    // 416 Range 不可满足
+    if(range.status == http::status::range_not_satisfiable) {
+        http::response<http::string_body> res{http::status::range_not_satisfiable, req.version()};
+        res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
+        res.set(http::field::content_range, range.content_range);
+        res.keep_alive(req.keep_alive());
+        res.content_length(0);
+        return res;
+    }
+
+    // 200 无 Range / 忽略
+    http::response<shared_string_body> res{http::status::ok, req.version()};
+    res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
+    res.set(http::field::content_type, server_utils::mime_type(full_path));
+    res.set(http::field::etag, etag);
+    res.set(http::field::last_modified, last_modified);
+    res.content_length(content->size());
+    res.keep_alive(req.keep_alive());
+    res.body() = content;
+    return res;
+}
+
+// 构建 响应头
+server_service::http::message_generator
+server_service::static_file_service::
+build_head_response(
+    const http::request<http::string_body>& req,
+    const std::string& full_path,
+    std::size_t total,
+    const std::string& etag,
+    const std::string& last_modified,
+    std::time_t last_modified_time) const
+{
+    // 条件请求 -> 304（优先于 Range）
+    if(server_utils::is_not_modified(req, etag, last_modified_time)) {
+        return server_utils::make_not_modified(req, etag, last_modified);
+    }
+
+    auto range = apply_range(req, total);
+
+    http::response<http::empty_body> res{range.status, req.version()};
+    res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
+    res.set(http::field::content_type, server_utils::mime_type(full_path));
+    res.set(http::field::etag, etag);
+    res.set(http::field::last_modified, last_modified);
+    if(!range.content_range.empty()) {
+        res.set(http::field::content_range, range.content_range);
+    }
+    res.content_length(range.length);
+    res.keep_alive(req.keep_alive());
+    return res;
+}
+
+// 构建 GET 响应
 server_service::http::message_generator
 server_service::static_file_service::
 handle_GET_request(
@@ -35,20 +163,8 @@ handle_GET_request(
     auto cached = lru_cache_.get(full_path);
     // 缓存命中
     if(cached) {
-        // 条件请求 If-None-Match / If-Modified-Since -> 304 空 body
-        if(server_utils::is_not_modified(req, cached->etag, cached->last_modified_time)) {
-            return server_utils::make_not_modified(req, cached->etag, cached->last_modified);
-        }
-        http::response<shared_string_body>
-        res{http::status::ok, req.version()};
-        res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
-        res.set(http::field::content_type, server_utils::mime_type(full_path));
-        res.set(http::field::etag, cached->etag);
-        res.set(http::field::last_modified, cached->last_modified);
-        res.content_length(cached->content->size());
-        res.keep_alive(req.keep_alive());
-        res.body() = cached->content;
-        return res;
+        return build_content_response(req, full_path, cached->content,
+            cached->etag, cached->last_modified, cached->last_modified_time);
     }
 
     // 未命中 从磁盘读入内存
@@ -74,27 +190,13 @@ handle_GET_request(
     const std::string etag = server_utils::make_etag(mtime_t, size);
     const std::string last_modified = server_utils::to_http_date(mtime_t);
 
-    // 条件请求 冷缓存路径同样生效
-    if(server_utils::is_not_modified(req, etag, mtime_t)) {
-        return server_utils::make_not_modified(req, etag, last_modified);
-    }
-
     lru_cache_.put(full_path,
         cached_file{content, etag, last_modified, mtime_t});
 
-    // 返回 string_body 响应
-    http::response<shared_string_body> res{http::status::ok, req.version()};
-    res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
-    res.set(http::field::content_type, server_utils::mime_type(full_path));
-    res.set(http::field::etag, etag);
-    res.set(http::field::last_modified, last_modified);
-    res.content_length(content->size());
-    res.keep_alive(req.keep_alive());
-    res.body() = content;
-
-    return res;
+    return build_content_response(req, full_path, content, etag, last_modified, mtime_t);
 }
 
+// 构建 HEAD 响应
 server_service::http::message_generator
 server_service::static_file_service::
 handle_HEAD_request(
@@ -105,18 +207,8 @@ handle_HEAD_request(
     // 检查缓存
     auto cached = lru_cache_.get(full_path);
     if (cached) {
-        // 条件请求 -> 304 空 body
-        if(server_utils::is_not_modified(req, cached->etag, cached->last_modified_time)) {
-            return server_utils::make_not_modified(req, cached->etag, cached->last_modified);
-        }
-        http::response<http::empty_body> res{http::status::ok, req.version()};
-        res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
-        res.set(http::field::content_type, server_utils::mime_type(full_path));
-        res.set(http::field::etag, cached->etag);
-        res.set(http::field::last_modified, cached->last_modified);
-        res.content_length(cached->content->size());
-        res.keep_alive(req.keep_alive());
-        return res;
+        return build_head_response(req, full_path, cached->content->size(),
+            cached->etag, cached->last_modified, cached->last_modified_time);
     }
 
     http::file_body::value_type body;
@@ -147,20 +239,7 @@ handle_HEAD_request(
     const std::string etag = server_utils::make_etag(mtime_t, size);
     const std::string last_modified = server_utils::to_http_date(mtime_t);
 
-    // 条件请求 冷缓存路径同样生效
-    if(server_utils::is_not_modified(req, etag, mtime_t)) {
-        return server_utils::make_not_modified(req, etag, last_modified);
-    }
-
-    http::response<http::empty_body> res{http::status::ok, req.version()};
-    res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
-    res.set(http::field::content_type, server_utils::mime_type(full_path));
-    res.set(http::field::etag, etag);
-    res.set(http::field::last_modified, last_modified);
-    res.content_length(size);
-    res.keep_alive(req.keep_alive());
-
-    return res;
+    return build_head_response(req, full_path, size, etag, last_modified, mtime_t);
 }
 
 server_service::http::message_generator

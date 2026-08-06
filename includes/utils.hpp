@@ -15,6 +15,27 @@ namespace server_utils
 namespace beast = boost::beast;
 namespace http = beast::http;
 
+// 字节区间
+struct byte_range
+{
+    std::optional<std::size_t> start;   // 空 => 后缀区间
+    std::optional<std::size_t> end;     // 空 => 到文件末尾
+};
+
+// 解析字节区间，返回实际的起始位置和长度
+bool
+resolve_range(
+    const byte_range& range, std::size_t total_size,
+    std::size_t& start, std::size_t& length);
+
+// 解析单个字节区间，返回起始位置和结束位置
+bool
+parse_single_range(beast::string_view single_range, byte_range& out_range);
+
+// 解析 Range 头，返回字节区间列表
+bool
+parse_range_header(beast::string_view value, std::vector<byte_range>& out_range);
+
 beast::string_view
 mime_type(beast::string_view path);
 

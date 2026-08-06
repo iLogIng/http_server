@@ -6,6 +6,130 @@
 
 namespace fs = boost::filesystem;
 
+namespace {
+
+// 无异常抛出数字解析
+bool
+parse_size(boost::beast::string_view s, std::size_t& out)
+{
+    if (s.empty())
+        return false;
+    std::size_t v = 0;
+    for (char c : s) {
+        if (c < '0' || c > '9') return false;
+        v = v * 10 + static_cast<std::size_t>(c - '0');
+    }
+    out = v;
+    return true;
+}
+
+// 去首尾空白
+boost::beast::string_view
+trim_ows(boost::beast::string_view s)
+{
+    while (!s.empty() && (s.front() == ' ' || s.front() == '\t')) s.remove_prefix(1);
+    while (!s.empty() && (s.back() == ' ' || s.back() == '\t')) s.remove_suffix(1);
+    return s;
+}
+}   // namespace
+
+// 解析字节区间，返回实际的起始位置和长度
+bool
+server_utils::
+resolve_range(
+    const server_utils::byte_range& range, std::size_t total_size,
+    std::size_t& start, std::size_t& length)
+{
+    if (range.start.has_value()) {
+        start = range.start.value();
+        // a >= b
+        if (start >= total_size) {
+            return false;
+        }
+        std::size_t end = range.end.has_value()
+            ? std::min(range.end.value(), total_size - 1)
+            : total_size - 1;
+        length = end - start + 1;
+    } else {
+        std::size_t suffix = std::min(range.end.value(), total_size);
+        start = total_size - suffix;
+        length = suffix;
+    }
+    return true;
+}
+
+// 解析单段区间: a-b / a- / -b
+// 语法非法（"-"、a>b、非数字、无 '-'）返回 false
+bool
+server_utils::
+parse_single_range(beast::string_view single_range, byte_range& out_range)
+{
+    single_range = trim_ows(single_range);
+    auto dash = single_range.find('-');
+    if (dash == beast::string_view::npos) {
+        return false;
+    }
+    auto left  = trim_ows(single_range.substr(0, dash));      // "a" 或 ""
+    auto right = trim_ows(single_range.substr(dash + 1));     // "b" 或 ""
+
+    if (left.empty() && right.empty()) {
+        return false;                                         // "-"
+    }
+    if (left.empty()) {                                       // -b 后缀区间
+        std::size_t b;
+        if (!parse_size(right, b)) return false;
+        out_range = byte_range{std::nullopt, b};
+    } else if (right.empty()) {                               // a- 开区间
+        std::size_t a;
+        if (!parse_size(left, a)) return false;
+        out_range = byte_range{a, std::nullopt};
+    } else {                                                  // a-b
+        std::size_t a, b;
+        if (!parse_size(left, a) || !parse_size(right, b)) return false;
+        if (a > b) return false;                              // 语法非法
+        out_range = byte_range{a, b};
+    }
+    return true;
+}
+
+// 解析 Range 头为区间列表；整头语法非法返回 false（服务器应忽略该头回 200）
+bool
+server_utils::
+parse_range_header(beast::string_view value, std::vector<byte_range>& out_range)
+{
+    out_range.clear();
+    // 前缀 bytes=（忽略大小写）
+    const char* prefix = "bytes=";
+    if (value.size() < 6) {
+        return false;
+    }
+    for (std::size_t i = 0; i < 6; ++i) {
+        if (std::tolower(value[i]) != prefix[i]) {
+            return false;
+        }
+    }
+
+    // 按 ',' 分割，每段委托 parse_single_range
+    beast::string_view rest = value.substr(6);
+    while (!rest.empty()) {
+        auto comma = rest.find(',');
+        auto seg = (comma == beast::string_view::npos)
+            ? rest : rest.substr(0, comma);
+        byte_range range;
+        // 任一段非法 -> 整头非法
+        if (!parse_single_range(seg, range)) {
+            return false;
+        }
+        out_range.push_back(range);
+        if (comma == beast::string_view::npos) {
+            // 无逗号 -> 结束
+            break;
+        }
+        rest = rest.substr(comma + 1);
+    }
+    // "bytes=" -> false
+    return !out_range.empty();
+}
 
 static const std::unordered_map<std::string, std::string>
 mime_types = {
