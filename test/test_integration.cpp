@@ -2,6 +2,8 @@
 
 #include <string>
 #include <map>
+#include <fstream>
+#include <iterator>
 #include <thread>
 #include <chrono>
 #include <csignal>
@@ -167,6 +169,13 @@ protected:
 
         return res;
     }
+
+    // 读取 doc_root 下文件内容，用于 Range 切片比对
+    std::string read_file_content(const std::string& rel) const
+    {
+        std::ifstream f(doc_root() + "/" + rel, std::ios::binary);
+        return std::string(std::istreambuf_iterator<char>(f), std::istreambuf_iterator<char>());
+    }
 };
 
 pid_t IntegrationTest::server_pid_ = -1;
@@ -230,7 +239,7 @@ TEST_F(IntegrationTest, GetWithMatchingEtagReturns304)
 
 TEST_F(IntegrationTest, GetWithMismatchedEtagReturns200)
 {
-    // 先 GET 一次填充缓存（测试需自包含，验证缓存命中分支的不匹配）
+    // 先 GET 一次填充缓存
     auto first = send_request(http::verb::get, "/index.html");
     ASSERT_EQ(first.result(), http::status::ok);
 
@@ -242,13 +251,77 @@ TEST_F(IntegrationTest, GetWithMismatchedEtagReturns200)
 
 TEST_F(IntegrationTest, GetWithNewerIfModifiedSinceReturns304)
 {
-    // 先 GET 一次填充缓存（测试需自包含，验证缓存命中分支的时间戳逻辑）
+    // 先 GET 一次填充缓存
     auto first = send_request(http::verb::get, "/index.html");
     ASSERT_EQ(first.result(), http::status::ok);
 
-    // 未来时间戳 → 文件未修改 → 304
+    // 未来时间戳 -> 文件未修改 -> 304
     auto res = send_request_with_headers(http::verb::get, "/index.html",
         {{"If-Modified-Since", "Sun, 06 Nov 2099 08:49:37 GMT"}});
+    EXPECT_EQ(res.result(), http::status::not_modified);
+}
+
+TEST_F(IntegrationTest, GetWithRangeReturns206)
+{
+    auto content = read_file_content("index.html");
+    auto res = send_request_with_headers(http::verb::get, "/index.html",
+        {{"Range", "bytes=0-99"}});
+    EXPECT_EQ(res.result(), http::status::partial_content);
+    EXPECT_EQ(res[http::field::content_range],
+        "bytes 0-99/" + std::to_string(content.size()));
+    EXPECT_EQ(res.body().size(), 100u);
+    EXPECT_EQ(res.body(), content.substr(0, 100));
+}
+
+TEST_F(IntegrationTest, GetWithOpenEndedRangeReturns206)
+{
+    auto content = read_file_content("index.html");
+    auto res = send_request_with_headers(http::verb::get, "/index.html",
+        {{"Range", "bytes=9000-"}});
+    EXPECT_EQ(res.result(), http::status::partial_content);
+    EXPECT_EQ(res.body(), content.substr(9000));
+    EXPECT_EQ(res.body().size(), content.size() - 9000);
+}
+
+TEST_F(IntegrationTest, GetWithSuffixRangeReturns206)
+{
+    auto content = read_file_content("index.html");
+    auto res = send_request_with_headers(http::verb::get, "/index.html",
+        {{"Range", "bytes=-100"}});
+    EXPECT_EQ(res.result(), http::status::partial_content);
+    EXPECT_EQ(res.body(), content.substr(content.size() - 100));
+    EXPECT_EQ(res.body().size(), 100u);
+}
+
+TEST_F(IntegrationTest, GetWithUnsatisfiableRangeReturns416)
+{
+    auto content = read_file_content("index.html");
+    auto res = send_request_with_headers(http::verb::get, "/index.html",
+        {{"Range", "bytes=99999-"}});
+    EXPECT_EQ(res.result(), http::status::range_not_satisfiable);
+    EXPECT_EQ(res[http::field::content_range],
+        "bytes */" + std::to_string(content.size()));
+    EXPECT_TRUE(res.body().empty());
+}
+
+TEST_F(IntegrationTest, GetWithInvalidRangeReturns200)
+{
+    auto res = send_request_with_headers(http::verb::get, "/index.html",
+        {{"Range", "bytes=abc"}});
+    EXPECT_EQ(res.result(), http::status::ok);
+    EXPECT_FALSE(res.body().empty());
+}
+
+TEST_F(IntegrationTest, GetWithMatchingEtagAndRangeReturns304)
+{
+    // 条件请求优先于 Range：If-None-Match 命中 → 304，不应 206
+    auto first = send_request(http::verb::get, "/index.html");
+    ASSERT_EQ(first.result(), http::status::ok);
+    auto etag = first[http::field::etag];
+    ASSERT_FALSE(etag.empty());
+
+    auto res = send_request_with_headers(http::verb::get, "/index.html",
+        {{"If-None-Match", std::string(etag)}, {"Range", "bytes=0-99"}});
     EXPECT_EQ(res.result(), http::status::not_modified);
 }
 
