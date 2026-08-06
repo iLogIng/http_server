@@ -92,6 +92,24 @@ TEST(ConfigValidTest, MaxBodySizeBoundary)
     EXPECT_FALSE(valid_max_body_size(0));
 }
 
+TEST(ConfigValidTest, LogLevel)
+{
+    EXPECT_TRUE(valid_log_level("trace"));
+    EXPECT_TRUE(valid_log_level("debug"));
+    EXPECT_TRUE(valid_log_level("info"));
+    EXPECT_TRUE(valid_log_level("warning"));
+    EXPECT_TRUE(valid_log_level("error"));
+    EXPECT_TRUE(valid_log_level("fatal"));
+}
+
+TEST(ConfigValidTest, InvalidLogLevel)
+{
+    EXPECT_FALSE(valid_log_level(""));
+    EXPECT_FALSE(valid_log_level("verbose"));
+    EXPECT_FALSE(valid_log_level("DEBUG"));
+    EXPECT_FALSE(valid_log_level("warn"));
+}
+
 // ============================================================
 // 命令行参数测试，无 JSON 依赖
 // ============================================================
@@ -132,6 +150,33 @@ TEST(ConfigCommandLineTest, PartialCommandLine)
     EXPECT_EQ(cfg.port(), 9090);
     EXPECT_EQ(cfg.address(), "0.0.0.0");
     EXPECT_EQ(cfg.threads(), 1);
+}
+
+TEST(ConfigCommandLineTest, LogLevelLongOption)
+{
+    const char* argv[] = {
+        "http_server",
+        "--log_level", "warning"
+    };
+    int argc = 3;
+
+    configuration cfg(argc, const_cast<char**>(argv));
+
+    EXPECT_EQ(cfg.log_level(), "warning");
+}
+
+TEST(ConfigCommandLineTest, LogLevelShortOption)
+{
+    const char* argv[] = {
+        "http_server",
+        "-L", "error"
+    };
+    int argc = 3;
+
+    configuration cfg(argc, const_cast<char**>(argv));
+
+    EXPECT_EQ(cfg.log_level(), "error");
+    EXPECT_EQ(cfg.log_file(), "./logs/http_server.log");
 }
 
 // ============================================================
@@ -189,6 +234,32 @@ TEST_F(TempConfigTest, JsonConfigLoaded)
     EXPECT_EQ(cfg.threads(), 2);
     EXPECT_EQ(cfg.timeout_seconds(), 60);
     EXPECT_EQ(cfg.max_body_size(), 2097152u);
+}
+
+TEST_F(TempConfigTest, JsonLogLevelLoaded)
+{
+    auto cfg_path = write_config(R"({
+        "log_level": "info"
+    })");
+
+    const char* argv[] = {"http_server", "--config", cfg_path.c_str()};
+    int argc = 3;
+    configuration cfg(argc, const_cast<char**>(argv));
+
+    EXPECT_EQ(cfg.log_level(), "info");
+}
+
+TEST_F(TempConfigTest, InvalidJsonLogLevelFallsBackToDefault)
+{
+    auto cfg_path = write_config(R"({
+        "log_level": "verbose"
+    })");
+
+    const char* argv[] = {"http_server", "--config", cfg_path.c_str()};
+    int argc = 3;
+    configuration cfg(argc, const_cast<char**>(argv));
+
+    EXPECT_EQ(cfg.log_level(), "debug");
 }
 
 TEST_F(TempConfigTest, CommandLineOverridesJson)
