@@ -14,7 +14,6 @@ namespace server_utils
 
 namespace beast = boost::beast;
 namespace http = beast::http;
-namespace fs = boost::filesystem;
 
 beast::string_view
 mime_type(beast::string_view path);

@@ -4,6 +4,8 @@
 #include <ctime>
 #include <unordered_map>
 
+namespace fs = boost::filesystem;
+
 
 static const std::unordered_map<std::string, std::string>
 mime_types = {

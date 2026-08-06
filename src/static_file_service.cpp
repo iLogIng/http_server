@@ -7,6 +7,8 @@
 #include <fstream>
 #include <ctime>
 
+namespace fs = boost::filesystem;
+
 server_service::static_file_service::
 static_file_service(const server_config::configuration &config)
     : config_(config)

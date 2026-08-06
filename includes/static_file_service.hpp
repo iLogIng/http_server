@@ -15,7 +15,6 @@ namespace server_service
 {
 namespace beast = boost::beast;
 namespace http = beast::http;
-namespace fs = boost::filesystem;
 
 // 基于一个网站根目录提供服务
 class static_file_service
