@@ -145,10 +145,12 @@ server_service::static_file_service::handle_request(
     if (full_path.empty()) {
         return server_utils::make_bad_request(req, req.target());
     }
-    if (target.back() == '/') {
-        full_path = server_utils::secure_file_cat(full_path, "index.html");
-        if (full_path.empty()) {
-            return server_utils::make_bad_request(req, req.target());
+    // 目录请求解析为目录下的 index.html（覆盖 /dir/ 与 /dir 两种写法）
+    boost::system::error_code ec;
+    if (fs::is_directory(full_path, ec)) {
+        full_path = (fs::path(full_path) / "index.html").string();
+        if (!fs::exists(full_path, ec)) {
+            return server_utils::make_not_found(req, target);
         }
     }
 
