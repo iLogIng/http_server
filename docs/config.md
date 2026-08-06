@@ -30,6 +30,7 @@ struct config_values
     unsigned short      port_ = 8080;
     std::string         doc_root_ = ".";
     std::string         log_file_ = "./logs/http_server.log";
+    std::string         log_level_ = "debug";
     unsigned int        threads_ = 1;
     unsigned int        timeout_seconds_ = 30;
     size_t              max_body_size_ = 1 << 20;
@@ -47,7 +48,7 @@ struct config_values
   2. 调用 **`apply_json_config`** 加载 JSON 文件配置
   3. 调用 **`apply_command_line`** 以命令行参数覆盖
 
-提供针对 **`config_values`** 结构体中各个数据成员的 getter 方法（`address()`、`port()`、`doc_root()`、`log_file()`、`threads()`、`timeout_seconds()`、`max_body_size()`、`max_connections()`、`max_cache_entries()`）。
+提供针对 **`config_values`** 结构体中各个数据成员的 getter 方法（`address()`、`port()`、`doc_root()`、`log_file()`、`log_level()`、`threads()`、`timeout_seconds()`、`max_body_size()`、`max_connections()`、`max_cache_entries()`）。
 
 ## JSON配置文件
 
@@ -64,6 +65,7 @@ struct config_values
     "timeout_seconds":30,
     "max_body_size":10485760,
     "log_file":"./logs/http_server.log",
+    "log_level":"debug",
     "max_connections":10000,
     "max_cache_entries":64
 }
@@ -78,6 +80,7 @@ struct config_values
   -p [ --port ] arg            Server port
   -r [ --doc_root ] arg        Document root
   -l [ --log_file ] arg        Log file path
+  -L [ --log_level ] arg       Log level (trace/debug/info/warning/error/fatal)
   -t [ --threads ] arg         Number of threads
   -s [ --timeout_seconds ] arg Timeout in seconds
   -b [ --max_body_size ] arg   Maximum body size

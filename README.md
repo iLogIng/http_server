@@ -48,7 +48,7 @@
 可通过命令行参数或 JSON 配置文件配置服务器，优先级：**命令行 > JSON > 默认值**
 
 ```bash
-:$ ./http_server --port 8080 --doc_root ./app/ --threads 4 --log_file ./logs/app.log
+:$ ./http_server --port 8080 --doc_root ./app/ --threads 4 --log_file ./logs/app.log --log_level warning
 ```
 
 ### 配置文件
@@ -62,6 +62,7 @@
     "port":8080,
     "doc_root":"./app/",
     "log_file":"./logs/http_server.log",
+    "log_level":"debug",
     "threads":1,
     "timeout_seconds":30,
     "max_body_size":10485760,
