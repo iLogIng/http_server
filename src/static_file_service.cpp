@@ -12,17 +12,20 @@ namespace fs = boost::filesystem;
 namespace server_service {
 namespace {
 
-// Range 求解结果 状态码 + 区间 + Content-Range 头
+// Range 求解结果
 struct range_result
 {
+    // 状态码
     http::status status = http::status::ok;
+    // 区间
     std::size_t start = 0;
     std::size_t length = 0;
-    std::string content_range;   // 空 = 未应用 Range
+    // Content-Range 头
+    std::string content_range;
 };
 
 // 解析 Range 头并求解
-// 无头/非法/多区间 -> 200；不可满足 → 416
+// 无头/非法/多区间 -> 200；不可满足 -> 416
 range_result
 apply_range(const http::request<http::string_body>& req, std::size_t total)
 {
@@ -159,12 +162,18 @@ handle_GET_request(
     const std::string& full_path
 ) const
 {
+    const auto now = std::chrono::steady_clock::now();
+
     // 检查缓存
     auto cached = lru_cache_.get(full_path);
-    // 缓存命中
-    if(cached) {
+    // 缓存命中且未过期
+    if(cached && cached->expires_at > now) {
         return build_content_response(req, full_path, cached->content,
             cached->etag, cached->last_modified, cached->last_modified_time);
+    }
+    // 命中但已过期，驱逐后重新读盘
+    if (cached) {
+        lru_cache_.erase(full_path);
     }
 
     // 未命中 从磁盘读入内存
@@ -191,7 +200,8 @@ handle_GET_request(
     const std::string last_modified = server_utils::to_http_date(mtime_t);
 
     lru_cache_.put(full_path,
-        cached_file{content, etag, last_modified, mtime_t});
+        cached_file{content, etag, last_modified, mtime_t,
+            now + std::chrono::seconds(config_.cache_ttl_seconds())});
 
     return build_content_response(req, full_path, content, etag, last_modified, mtime_t);
 }
@@ -204,11 +214,17 @@ handle_HEAD_request(
     const std::string& full_path
 ) const
 {
+    const auto now = std::chrono::steady_clock::now();
+
     // 检查缓存
     auto cached = lru_cache_.get(full_path);
-    if (cached) {
+    if (cached && cached->expires_at > now) {
         return build_head_response(req, full_path, cached->content->size(),
             cached->etag, cached->last_modified, cached->last_modified_time);
+    }
+    // 命中但已过期，驱逐后重新读元数据
+    if (cached) {
+        lru_cache_.erase(full_path);
     }
 
     http::file_body::value_type body;
@@ -252,7 +268,7 @@ server_service::static_file_service::handle_request(
         return server_utils::make_bad_request(req, "Unknown HTTP-method");
     }
 
-    // 将根路径 / 映射为 /index.html，避免 boost::filesystem 将 / 视为绝对根路径
+    // 将根路径 / 映射为 /index.html
     auto target = req.target();
     if (target == "/") {
         target = "/index.html";
@@ -264,15 +280,17 @@ server_service::static_file_service::handle_request(
 
     std::string full_path;
     {
-        // 优先查路径解析缓存 命中即跳过 weakly_canonical / is_directory 的系统调用
+        // 优先查路径解析缓存 命中且未过期即跳过
+        // weakly_canonical / is_directory 的系统调用
+        const auto now = std::chrono::steady_clock::now();
         std::shared_lock lock(path_mutex_);
         auto it = path_cache_.find(target);
-        if (it != path_cache_.end()) {
-            full_path = it->second;
+        if (it != path_cache_.end() && it->second.expires_at > now) {
+            full_path = it->second.full_path;
         }
     }
     if (full_path.empty()) {
-        // 缓存未命中 规范化 + 目录解析，仅 首次或缓存淘汰后 执行
+        // 缓存未命中或已过期 规范化 + 目录解析，仅 首次、过期或缓存淘汰后 执行
         full_path = server_utils::secure_file_cat(this->config_.doc_root(), target);
         if (full_path.empty()) {
             return server_utils::make_bad_request(req, req.target());
@@ -289,7 +307,8 @@ server_service::static_file_service::handle_request(
         if (path_cache_.size() >= max_path_cache_entries) {
             path_cache_.clear();
         }
-        path_cache_[std::string(target)] = full_path;
+        path_cache_[std::string(target)] = path_entry{full_path,
+            std::chrono::steady_clock::now() + std::chrono::seconds(config_.cache_ttl_seconds())};
     }
 
 
