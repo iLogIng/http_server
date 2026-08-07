@@ -194,6 +194,16 @@ mime_type(beast::string_view path)
     return "application/text";
 }
 
+server_utils::beast::string_view
+server_utils::
+target_path(beast::string_view target)
+{
+    // 路由匹配与文件解析只关心路径部分
+    // query/fragment 按 ?# 进行截断
+    auto pos = target.find_first_of("?#");
+    return (pos == beast::string_view::npos) ? target : target.substr(0, pos);
+}
+
 // 防止路径穿越
 bool
 server_utils::

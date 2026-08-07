@@ -1,4 +1,5 @@
 #include "../includes/router.hpp"
+#include "../includes/utils.hpp"
 
 namespace {
 
@@ -42,7 +43,8 @@ server_service::router::
 match(const http::request<http::string_body>& req) const
 {
     auto method = req.method();
-    auto target = req.target();
+    // 剥离 query/fragment，仅以路径部分匹配
+    auto target = server_utils::target_path(req.target());
 
     // 精确匹配
     auto it = exact_routes_.find({method, std::string(target)});

@@ -269,7 +269,8 @@ server_service::static_file_service::handle_request(
     }
 
     // 将根路径 / 映射为 /index.html
-    auto target = req.target();
+    // 先剥离 query/fragment，仅以路径部分进行解析与缓存
+    auto target = server_utils::target_path(req.target());
     if (target == "/") {
         target = "/index.html";
     }
@@ -290,7 +291,8 @@ server_service::static_file_service::handle_request(
         }
     }
     if (full_path.empty()) {
-        // 缓存未命中或已过期 规范化 + 目录解析，仅 首次、过期或缓存淘汰后 执行
+        // 缓存未命中或已过期
+        // 仅 首次、过期或缓存淘汰后 执行
         full_path = server_utils::secure_file_cat(this->config_.doc_root(), target);
         if (full_path.empty()) {
             return server_utils::make_bad_request(req, req.target());

@@ -39,6 +39,11 @@ parse_range_header(beast::string_view value, std::vector<byte_range>& out_range)
 beast::string_view
 mime_type(beast::string_view path);
 
+// 剥离 target 的 query/fragment，返回纯路径部分
+// (如 /index.html?x=1 -> /index.html)
+beast::string_view
+target_path(beast::string_view target);
+
 bool
 is_safe_path(beast::string_view path);
 
