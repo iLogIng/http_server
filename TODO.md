@@ -20,19 +20,21 @@
 
 ## 一、功能扩展 Roadmap
 
-### 阶段一 · POST + OPTIONS（计划已定，待实现）
+### 阶段一 · POST + OPTIONS
 
 > 范围：POST 解析 + 回显；方法覆盖 POST + OPTIONS。
 > 顺带修复三处问题：query string 剥离、前缀路由路径边界、`max_body_size` 默认值对齐。
 
-- [ ] **请求体解析工具**（`server_utils`）：`url_decode`（%XX、+ -> 空格）、`parse_urlencoded`（form-urlencoded -> map）
-- [ ] **POST `/api/echo` 路由**（`main.cpp`）：按 `Content-Type` 分流，form -> 回显 JSON；JSON -> 原样回显；其余 -> 400
-- [ ] **OPTIONS / Allow 头**：静态服务返回 `Allow: GET, HEAD, OPTIONS`
-- [ ] **query string 剥离**：`router::match` 与 `static_file_service::handle_request` 用 `http::target_view::path()`，修复 `?x=1` 404
-- [ ] **前缀路由边界修复**：`/api` 不误匹配 `/apiary`（`router.cpp`）
-- [ ] **`max_body_size` 默认对齐**：`config.hpp` 1MB -> 10MB（与 README 一致）
-- [ ] **测试**：`test_utils`（解码/解析）、`test_router`（query/边界/方法）、`test_integration`（POST 回显、OPTIONS、query 回归）
-- [ ] **文档**：README 功能特性、TODO 完成清单同步
+- [x] **请求体解析工具**（`server_utils`）：`url_decode`（%XX、+ -> 空格）、`parse_urlencoded`（form-urlencoded -> map）
+- [x] **dynamic_api_service 动态 API 服务**：端点注册表（method + path 自由注册，完整路径），链式注册，`as_handler()` 挂载任意 base_path
+- [x] **POST `/api/echo` 路由**（`main.cpp`）：按 `Content-Type` 分流，form -> 回显 JSON；JSON -> 原样回显；其余 -> 400
+- [x] **OPTIONS / Allow 头**：全局支持，Allow 由端点注册表动态计算（GET 隐含 HEAD）
+- [x] **405 + Allow**：路径存在但方法未注册 -> 405，Allow 列出全部方法（RFC 7231）
+- [x] **query string 剥离**：`target_path` 工具，`router::match` 与 `static_file_service::handle_request` 共用
+- [x] **前缀路由边界修复**：`/api` 不误匹配 `/apiary`（路径段边界匹配）
+- [x] **`max_body_size` 默认对齐**：`config.hpp` 1MB -> 10MB（与 README 一致）
+- [x] **测试**：`test_utils`（解码/解析）、`test_router`（query/边界）、`test_dynamic_api`（端点/405/OPTIONS/base_path 泛化）、`test_integration`（POST 回显、OPTIONS、405、query 回归）
+- [x] **文档**：README 功能特性、TODO 完成清单同步
 
 ### 阶段二 · 协议完整性
 
@@ -89,8 +91,9 @@
 | 静态服务 | 目录请求解析为 `index.html`；warm 路径零系统调用（路径缓存免 statx） |
 | LRU 缓存 | 泛型模板，`shared_ptr` 零拷贝，key 免临时分配 |
 | 条件请求 | ETag/Last-Modified，If-None-Match / If-Modified-Since -> 304 |
+| 动态 API | 端点注册表，method + path 自由注册；POST form/JSON 回显；OPTIONS 动态 Allow；405 + Allow |
 | 连接限流 | 503 + Retry-After |
-| 单元测试 | 71 用例全通过 |
+| 单元测试 | 129 用例全通过 |
 | 压测报告 | `docs/stress-test/` 多线程多并发曲线 |
 
 > 设计决策记录：LRU 选型 / 线程安全 / 路由前缀匹配而非正则 / 路径解析缓存 —— 面试展示时突出这些思考。

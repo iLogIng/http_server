@@ -24,7 +24,10 @@
 >
 > 连接限流（503 + Retry-After 头） LRU 文件内容缓存（线程安全，可配置容量）
 >
-> Google Test 单元测试 + 端到端集成测试（71 用例全通过）
+> 动态 API 服务（端点注册表：method + path 自由注册） POST 请求解析
+> （form-urlencoded / JSON 回显） OPTIONS 全局支持（动态 Allow 头） 405 + Allow
+>
+> Google Test 单元测试 + 端到端集成测试（129 用例全通过）
 
 -----
 
@@ -173,6 +176,8 @@ wrk -t6 -c400 -d30s http://127.0.0.1:8080/index.html
   - 工具模块
 - **static_file_service**
   - 静态文件服务模块
+- **dynamic_api_service**
+  - 动态 API 服务模块（端点注册表：method + path 自由注册，OPTIONS 全局支持）
 - **cache**
   - LRU 缓存模块，泛型模板，多线程安全
 - **router**
