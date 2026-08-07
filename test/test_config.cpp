@@ -92,6 +92,18 @@ TEST(ConfigValidTest, MaxBodySizeBoundary)
     EXPECT_FALSE(valid_max_body_size(0));
 }
 
+TEST(ConfigValidTest, CacheTtlSeconds)
+{
+    EXPECT_TRUE(valid_cache_ttl_seconds(1));
+    EXPECT_TRUE(valid_cache_ttl_seconds(30));
+    EXPECT_TRUE(valid_cache_ttl_seconds(3600));
+}
+
+TEST(ConfigValidTest, CacheTtlSecondsBoundary)
+{
+    EXPECT_FALSE(valid_cache_ttl_seconds(0));
+}
+
 TEST(ConfigValidTest, LogLevel)
 {
     EXPECT_TRUE(valid_log_level("trace"));
@@ -123,9 +135,11 @@ TEST(ConfigCommandLineTest, FullCommandLine)
         "--address", "127.0.0.1",
         "--timeout_seconds", "60",
         "--max_body_size", "2097152",
+        "--max_cache_entries", "32",
+        "--cache_ttl_seconds", "60",
         "--doc_root", "/tmp"
     };
-    int argc = 13;
+    int argc = 17;
 
     configuration cfg(argc, const_cast<char**>(argv));
 
@@ -134,6 +148,8 @@ TEST(ConfigCommandLineTest, FullCommandLine)
     EXPECT_EQ(cfg.threads(), 4);
     EXPECT_EQ(cfg.timeout_seconds(), 60);
     EXPECT_EQ(cfg.max_body_size(), 2097152u);
+    EXPECT_EQ(cfg.max_cache_entries(), 32u);
+    EXPECT_EQ(cfg.cache_ttl_seconds(), 60u);
     EXPECT_EQ(cfg.doc_root(), "/tmp");
 }
 
@@ -221,7 +237,9 @@ TEST_F(TempConfigTest, JsonConfigLoaded)
         "doc_root": "/tmp",
         "threads": 2,
         "timeout_seconds": 60,
-        "max_body_size": 2097152
+        "max_body_size": 2097152,
+        "max_cache_entries": 32,
+        "cache_ttl_seconds": 60
     })");
 
     const char* argv[] = {"http_server", "--config", cfg_path.c_str()};
@@ -234,6 +252,21 @@ TEST_F(TempConfigTest, JsonConfigLoaded)
     EXPECT_EQ(cfg.threads(), 2);
     EXPECT_EQ(cfg.timeout_seconds(), 60);
     EXPECT_EQ(cfg.max_body_size(), 2097152u);
+    EXPECT_EQ(cfg.max_cache_entries(), 32u);
+    EXPECT_EQ(cfg.cache_ttl_seconds(), 60u);
+}
+
+TEST_F(TempConfigTest, InvalidCacheTtlFallsBackToDefault)
+{
+    auto cfg_path = write_config(R"({
+        "cache_ttl_seconds": 0
+    })");
+
+    const char* argv[] = {"http_server", "--config", cfg_path.c_str()};
+    int argc = 3;
+    configuration cfg(argc, const_cast<char**>(argv));
+
+    EXPECT_EQ(cfg.cache_ttl_seconds(), 30u);
 }
 
 TEST_F(TempConfigTest, JsonLogLevelLoaded)

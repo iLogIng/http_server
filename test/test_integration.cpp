@@ -59,6 +59,7 @@ protected:
                   "--threads", "2",
                   "--timeout_seconds", "10",
                   "--max_cache_entries", "64",
+                  "--cache_ttl_seconds", "1",
                   "--log_file", "/tmp/integration_test.log",
                   static_cast<char*>(nullptr));
             _exit(127);
@@ -179,6 +180,8 @@ protected:
 };
 
 pid_t IntegrationTest::server_pid_ = -1;
+
+// 测试
 
 TEST_F(IntegrationTest, GetExistingFileReturns200)
 {
@@ -341,7 +344,7 @@ TEST_F(IntegrationTest, GetWithInvalidRangeReturns200)
 
 TEST_F(IntegrationTest, GetWithMatchingEtagAndRangeReturns304)
 {
-    // 条件请求优先于 Range：If-None-Match 命中 → 304，不应 206
+    // 条件请求优先于 Range: If-None-Match 命中 -> 304，不应 206
     auto first = send_request(http::verb::get, "/index.html");
     ASSERT_EQ(first.result(), http::status::ok);
     auto etag = first[http::field::etag];
@@ -392,4 +395,42 @@ TEST_F(IntegrationTest, SequentialRequestsAllSucceed)
         auto res = send_request(http::verb::get, "/index.html");
         EXPECT_EQ(res.result(), http::status::ok);
     }
+}
+
+TEST_F(IntegrationTest, CacheInvalidatedAfterTtl)
+{
+    // 临时文件 避免污染 app/
+    const std::string rel = "__cache_ttl_test__.html";
+    const std::string path = doc_root() + "/" + rel;
+    const std::string target = "/" + rel;
+    struct FileGuard { std::string p; ~FileGuard() { std::remove(p.c_str()); } } guard{path};
+    std::remove(path.c_str());
+
+    // 写入 v1 -> 命中缓存返回 v1
+    {
+        std::ofstream f(path, std::ios::binary | std::ios::trunc);
+        f << "version-one-content-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+    }
+    auto first = send_request(http::verb::get, target);
+    ASSERT_EQ(first.result(), http::status::ok);
+    ASSERT_EQ(first.body(),
+        "version-one-content-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+
+    // 等待 TTL 过期 服务器 cache_ttl_seconds=1 重写为 v2
+    // 缓冲替换
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    {
+        std::ofstream f(path, std::ios::binary | std::ios::trunc);
+        f << "version-two-content-BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
+    }
+    auto second = send_request(http::verb::get, target);
+    EXPECT_EQ(second.result(), http::status::ok);
+    EXPECT_EQ(second.body(),
+        "version-two-content-BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB");
+
+    // 删除临时文件 等 TTL 过期后路径缓存失效 -> 404
+    std::remove(path.c_str());
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    auto third = send_request(http::verb::get, target);
+    EXPECT_EQ(third.result(), http::status::not_found);
 }
