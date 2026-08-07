@@ -362,7 +362,7 @@ TEST_F(TempConfigTest, FloatValuesRejectedWithoutException)
     EXPECT_EQ(cfg.port(), 8080);
     EXPECT_EQ(cfg.threads(), 1);
     EXPECT_EQ(cfg.timeout_seconds(), 30);
-    EXPECT_EQ(cfg.max_body_size(), 1u << 30);
+    EXPECT_EQ(cfg.max_body_size(), 10485760u);
 }
 
 TEST_F(TempConfigTest, OverflowingUintRejectedWithoutException)

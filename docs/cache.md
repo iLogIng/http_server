@@ -84,7 +84,7 @@ class lru_cache { ... };
 
 #### 配置关联
 
-缓存容量通过 `config_.max_cache_entries()` 获取（默认 `0` = 禁用缓存）。当容量为 `0` 时，`put()` 直接返回，`get()` 永远返回 `std::nullopt`，零开销。
+缓存容量通过 `config_.max_cache_entries()` 获取（默认 `64`，可通过配置修改）。当容量为 `0` 时，`put()` 直接返回，`get()` 永远返回 `std::nullopt`，零开销。
 
 ## 与 static_file_service 的集成
 

@@ -24,9 +24,9 @@ struct config_values
     std::string         log_level_ = "debug";
     unsigned int        threads_ = 1;
     unsigned int        timeout_seconds_ = 30;
-    std::size_t         max_body_size_ = 1 << 30;
+    std::size_t         max_body_size_ = 10485760;
     std::size_t         max_connections_ = 10000;
-    std::size_t         max_cache_entries_ = 0;
+    std::size_t         max_cache_entries_ = 64;
     unsigned int        cache_ttl_seconds_ = 30;
 };
 
