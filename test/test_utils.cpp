@@ -1,8 +1,30 @@
 #include <gtest/gtest.h>
 #include <string>
+#include <zlib.h>
 #include "../includes/utils.hpp"
 
 using namespace server_utils;
+
+// gzip 解压辅助（测试用）：验证 gzip_compress 的往返还原
+static std::string
+inflate_gzip(const std::string& data){
+    z_stream strm{};
+    if (inflateInit2(&strm, 15 + 16) != Z_OK) {
+        return "";
+    }
+    std::string out(data.size() * 4, '\0');
+    strm.next_in = reinterpret_cast<Bytef*>(const_cast<char*>(data.data()));
+    strm.avail_in = static_cast<uInt>(data.size());
+    strm.next_out = reinterpret_cast<Bytef*>(out.data());
+    strm.avail_out = static_cast<uInt>(out.size());
+    int ret = inflate(&strm, Z_FINISH);
+    inflateEnd(&strm);
+    if (ret != Z_STREAM_END) {
+        return "";
+    }
+    out.resize(out.size() - strm.avail_out);
+    return out;
+}
 
 // ============================================================
 // mime_type
@@ -118,6 +140,57 @@ TEST(UtilsParseUrlencodedTest, EmptyAndTrailingAmp)
     parse_urlencoded("name=alice&", form);
     EXPECT_EQ(form.size(), 1u);
     EXPECT_EQ(form["name"], "alice");
+}
+
+// ============================================================
+// should_compress / gzip_compress
+// ============================================================
+
+TEST(UtilsShouldCompressTest, TextTypesCompressible)
+{
+    EXPECT_TRUE(should_compress("text/html"));
+    EXPECT_TRUE(should_compress("text/css"));
+    EXPECT_TRUE(should_compress("text/plain"));
+    EXPECT_TRUE(should_compress("application/json"));
+    EXPECT_TRUE(should_compress("application/javascript"));
+    EXPECT_TRUE(should_compress("application/xml"));
+    EXPECT_TRUE(should_compress("image/svg+xml"));
+}
+
+TEST(UtilsShouldCompressTest, BinaryTypesNotCompressible)
+{
+    EXPECT_FALSE(should_compress("image/png"));
+    EXPECT_FALSE(should_compress("image/jpeg"));
+    EXPECT_FALSE(should_compress("application/octet-stream"));
+    EXPECT_FALSE(should_compress("application/x-shockwave-flash"));
+    EXPECT_FALSE(should_compress("application/text"));
+    EXPECT_FALSE(should_compress(""));
+}
+
+TEST(UtilsGzipCompressTest, RoundTripPreservesContent)
+{
+    const std::string input = "hello gzip world hello gzip world hello gzip world";
+    std::string compressed;
+    ASSERT_TRUE(gzip_compress(input, compressed));
+    EXPECT_LT(compressed.size(), input.size());       // 文本应有压缩收益
+    EXPECT_EQ(inflate_gzip(compressed), input);       // 往返还原
+}
+
+TEST(UtilsGzipCompressTest, CompressedHasGzipMagic)
+{
+    std::string compressed;
+    ASSERT_TRUE(gzip_compress("data", compressed));
+    // gzip 魔数 0x1f 0x8b
+    ASSERT_GE(compressed.size(), 2u);
+    EXPECT_EQ(static_cast<unsigned char>(compressed[0]), 0x1f);
+    EXPECT_EQ(static_cast<unsigned char>(compressed[1]), 0x8b);
+}
+
+TEST(UtilsGzipCompressTest, EmptyInputFails)
+{
+    std::string compressed = "dummy";
+    EXPECT_FALSE(gzip_compress("", compressed));
+    EXPECT_TRUE(compressed.empty());
 }
 
 // ============================================================
