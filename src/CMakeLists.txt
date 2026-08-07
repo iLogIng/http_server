@@ -40,4 +40,5 @@ target_link_libraries(http_server PRIVATE
     Boost::log_setup
     Boost::program_options
     Boost::json
+    ZLIB::ZLIB
 )

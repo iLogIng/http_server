@@ -31,6 +31,7 @@ target_link_libraries(test_utils PRIVATE
     Boost::thread
     Boost::log
     Boost::log_setup
+    ZLIB::ZLIB
 )
 target_include_directories(test_utils PRIVATE
     ${PROJECT_SOURCE_DIR}/src
@@ -52,6 +53,7 @@ target_link_libraries(test_router PRIVATE
     Boost::thread
     Boost::log
     Boost::log_setup
+    ZLIB::ZLIB
 )
 target_include_directories(test_router PRIVATE
     ${PROJECT_SOURCE_DIR}/src
@@ -94,6 +96,7 @@ target_link_libraries(test_dynamic_api PRIVATE
     Boost::thread
     Boost::log
     Boost::log_setup
+    ZLIB::ZLIB
 )
 target_include_directories(test_dynamic_api PRIVATE
     ${PROJECT_SOURCE_DIR}/src
@@ -113,6 +116,7 @@ target_link_libraries(test_integration PRIVATE
     GTest::gtest GTest::gtest_main
     Boost::system
     Boost::thread
+    ZLIB::ZLIB
 )
 target_include_directories(test_integration PRIVATE
     ${Boost_INCLUDE_DIRS}

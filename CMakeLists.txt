@@ -43,6 +43,9 @@ find_package(Boost CONFIG REQUIRED COMPONENTS
     json
 )
 
+find_package(ZLIB REQUIRED)
+find_package(ZLIB REQUIRED)
+
 add_library(project_warnings INTERFACE)
 target_compile_options(project_warnings INTERFACE
     $<$<OR:$<CXX_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:-Wall -Wextra>
