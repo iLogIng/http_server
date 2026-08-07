@@ -15,6 +15,7 @@ RUN sed -i "s|//archive.ubuntu.com|//${APT_MIRROR}|" /etc/apt/sources.list.d/ubu
         libboost-system-dev libboost-thread-dev \
         libboost-filesystem-dev libboost-log-dev \
         libboost-program-options-dev libboost-json-dev \
+        zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
 COPY . /src
@@ -40,6 +41,7 @@ RUN sed -i "s|//archive.ubuntu.com|//${APT_MIRROR}|" /etc/apt/sources.list.d/ubu
         libboost-log1.83.0 \
         libboost-program-options1.83.0 \
         libboost-json1.83.0 \
+        zlib1g \
     && rm -rf /var/lib/apt/lists/*
 
 # 从构建阶段拷贝编译好的二进制 根据CMakeLists.txt构建规则

@@ -38,6 +38,7 @@ jobs:
             libboost-log-dev \
             libboost-program-options-dev \
             libboost-json-dev \
+            zlib1g-dev \
             libgtest-dev \
             ccache
           # GTest on Ubuntu ships headers + source; build and install the lib
