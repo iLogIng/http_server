@@ -9,6 +9,7 @@
 #include <csignal>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <zlib.h>
 
 #include <boost/beast.hpp>
 #include <boost/asio.hpp>
@@ -17,6 +18,28 @@ namespace beast = boost::beast;
 namespace http = beast::http;
 namespace net = boost::asio;
 using tcp = net::ip::tcp;
+
+// gzip 解压辅助：验证压缩响应的 body 还原
+static std::string
+inflate_gzip(const std::string& data)
+{
+    z_stream strm{};
+    if (inflateInit2(&strm, 15 + 16) != Z_OK) {
+        return "";
+    }
+    std::string out(data.size() * 4, '\0');
+    strm.next_in = reinterpret_cast<Bytef*>(const_cast<char*>(data.data()));
+    strm.avail_in = static_cast<uInt>(data.size());
+    strm.next_out = reinterpret_cast<Bytef*>(out.data());
+    strm.avail_out = static_cast<uInt>(out.size());
+    int ret = inflate(&strm, Z_FINISH);
+    inflateEnd(&strm);
+    if (ret != Z_STREAM_END) {
+        return "";
+    }
+    out.resize(out.size() - strm.avail_out);
+    return out;
+}
 
 static constexpr int TEST_PORT = 19876;
 
@@ -162,7 +185,15 @@ protected:
         http::write(sock, req);
 
         http::response<http::string_body> res;
-        http::read(sock, buffer, res);
+        if (method == http::verb::head) {
+            // HEAD 响应无 body：skip 避免按 Content-Length 等待 body
+            http::response_parser<http::string_body> parser;
+            parser.skip(true);
+            http::read(sock, buffer, parser);
+            res = parser.release();
+        } else {
+            http::read(sock, buffer, res);
+        }
 
         beast::error_code ec;
         sock.shutdown(tcp::socket::shutdown_both, ec);
@@ -418,6 +449,94 @@ TEST_F(IntegrationTest, GetOnPostOnlyEndpointReturns405WithAllow)
     auto res = send_request(http::verb::get, "/api/echo");
     EXPECT_EQ(res.result(), http::status::method_not_allowed);
     EXPECT_EQ(res[http::field::allow], "POST, OPTIONS");
+}
+
+// ============================================================
+// gzip 内容协商
+// ============================================================
+
+TEST_F(IntegrationTest, GetWithoutAcceptEncodingReturnsPlain)
+{
+    // 无 Accept-Encoding -> 原样 200，无 Content-Encoding
+    auto res = send_request(http::verb::get, "/index.html");
+    EXPECT_EQ(res.result(), http::status::ok);
+    EXPECT_TRUE(res[http::field::content_encoding].empty());
+    EXPECT_EQ(res.body(), read_file_content("index.html"));
+}
+
+TEST_F(IntegrationTest, GetWithAcceptGzipReturnsCompressed)
+{
+    auto plain = read_file_content("index.html");
+
+    auto res = send_request_with_headers(http::verb::get, "/index.html",
+        {{"Accept-Encoding", "gzip"}});
+    EXPECT_EQ(res.result(), http::status::ok);
+    EXPECT_EQ(res[http::field::content_encoding], "gzip");
+    EXPECT_EQ(res[http::field::vary], "Accept-Encoding");
+    // body 为 gzip 数据，解压后与原文件一致
+    EXPECT_NE(res.body(), plain);
+    EXPECT_EQ(inflate_gzip(res.body()), plain);
+    // Content-Length 与压缩后长度一致
+    EXPECT_EQ(res[http::field::content_length],
+        std::to_string(res.body().size()));
+}
+
+TEST_F(IntegrationTest, GetBinaryWithGzipNotCompressed)
+{
+    // 二进制（png 扩展名）不接受 gzip 压缩：临时文件 + 守卫清理
+    const std::string rel = "__binary_test__.png";
+    const std::string path = doc_root() + "/" + rel;
+    struct FileGuard { std::string p; ~FileGuard() { std::remove(p.c_str()); } } guard{path};
+    std::remove(path.c_str());
+    {
+        std::ofstream f(path, std::ios::binary | std::ios::trunc);
+        f << "\x89PNG\r\n\x1a\n" << std::string(200, '\x00');
+    }
+
+    auto res = send_request_with_headers(http::verb::get, "/" + rel,
+        {{"Accept-Encoding", "gzip"}});
+    EXPECT_EQ(res.result(), http::status::ok);
+    EXPECT_TRUE(res[http::field::content_encoding].empty());
+}
+
+TEST_F(IntegrationTest, RangeRequestNotCompressed)
+{
+    // 带 Range 的请求不压缩（RFC 7233 按编码后字节计，破坏断点续传）
+    auto res = send_request_with_headers(http::verb::get, "/index.html",
+        {{"Range", "bytes=0-99"}, {"Accept-Encoding", "gzip"}});
+    EXPECT_EQ(res.result(), http::status::partial_content);
+    EXPECT_TRUE(res[http::field::content_encoding].empty());
+    EXPECT_EQ(res.body(), read_file_content("index.html").substr(0, 100));
+}
+
+TEST_F(IntegrationTest, NotModifiedResponseIncludesVary)
+{
+    // 304 响应必须回 Vary: Accept-Encoding，避免客户端缓存串版本
+    auto first = send_request(http::verb::get, "/index.html");
+    ASSERT_EQ(first.result(), http::status::ok);
+    auto etag = first[http::field::etag];
+    ASSERT_FALSE(etag.empty());
+
+    auto res = send_request_with_headers(http::verb::get, "/index.html",
+        {{"If-None-Match", std::string(etag)}, {"Accept-Encoding", "gzip"}});
+    EXPECT_EQ(res.result(), http::status::not_modified);
+    EXPECT_EQ(res[http::field::vary], "Accept-Encoding");
+}
+
+TEST_F(IntegrationTest, HeadWithGzipReportsCompressedLength)
+{
+    // HEAD + gzip：先 GET 填充缓存，HEAD 应报告压缩后长度
+    auto get_res = send_request_with_headers(http::verb::get, "/index.html",
+        {{"Accept-Encoding", "gzip"}});
+    ASSERT_EQ(get_res.result(), http::status::ok);
+    ASSERT_EQ(get_res[http::field::content_encoding], "gzip");
+
+    auto head_res = send_request_with_headers(http::verb::head, "/index.html",
+        {{"Accept-Encoding", "gzip"}});
+    EXPECT_EQ(head_res.result(), http::status::ok);
+    EXPECT_EQ(head_res[http::field::content_encoding], "gzip");
+    EXPECT_EQ(head_res[http::field::content_length],
+              get_res[http::field::content_length]);
 }
 
 TEST_F(IntegrationTest, GetApiHelloWithQueryString)
