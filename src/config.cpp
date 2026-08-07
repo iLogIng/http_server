@@ -7,6 +7,30 @@
 
 #include <fstream>
 #include <filesystem>
+#include <limits>
+#include <optional>
+
+namespace {
+
+// 安全读取 JSON 整数：
+//   int64 直接返回；uint64 不溢出时返回；double/其他类型返回 nullopt
+// 避免 as_int64() 对浮点或超界正整数抛异常，导致整份 JSON 配置级联回退
+std::optional<std::int64_t>
+json_checked_int(const boost::json::value& v)
+{
+    if (v.is_int64()) {
+        return v.as_int64();
+    }
+    if (v.is_uint64()) {
+        const auto u = v.as_uint64();
+        if (u <= static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>::max())) {
+            return static_cast<std::int64_t>(u);
+        }
+    }
+    return std::nullopt;
+}
+
+} // namespace
 
 const std::string&
 server_config::configuration::
@@ -244,65 +268,65 @@ apply_json_config(std::string path)
     }
 
     if (json_values.contains("port") && json_values.at("port").is_number()) {
-        auto port_val = json_values.at("port").as_int64();
-        if(valid_port(port_val)) {
-            this->config_vals_.port_ = static_cast<unsigned short>(port_val);
+        auto port_val = json_checked_int(json_values.at("port"));
+        if (port_val && valid_port(*port_val)) {
+            this->config_vals_.port_ = static_cast<unsigned short>(*port_val);
         } else {
-            LOG_WARNING << "Invalid port in JSON:" << port_val;
+            LOG_WARNING << "Invalid port in JSON:" << json_values.at("port");
         }
     }
 
     if (json_values.contains("threads") && json_values.at("threads").is_number()) {
-        auto thrd_val = json_values.at("threads").as_int64();
-        if(valid_threads(thrd_val)) {
-            this->config_vals_.threads_ = static_cast<unsigned int>(thrd_val);
+        auto thrd_val = json_checked_int(json_values.at("threads"));
+        if (thrd_val && valid_threads(*thrd_val)) {
+            this->config_vals_.threads_ = static_cast<unsigned int>(*thrd_val);
         } else {
-            LOG_WARNING << "Invalid threads count in JSON:" << thrd_val;
+            LOG_WARNING << "Invalid threads count in JSON:" << json_values.at("threads");
         }
     }
 
     if (json_values.contains("timeout_seconds") && json_values.at("timeout_seconds").is_number()) {
-        auto time_val = json_values.at("timeout_seconds").as_int64();
-        if(valid_timeout_seconds(time_val)) {
-            this->config_vals_.timeout_seconds_ = static_cast<unsigned int>(time_val);
+        auto time_val = json_checked_int(json_values.at("timeout_seconds"));
+        if (time_val && valid_timeout_seconds(*time_val)) {
+            this->config_vals_.timeout_seconds_ = static_cast<unsigned int>(*time_val);
         } else {
-            LOG_WARNING << "Invalid timeout seconds in JSON:" << time_val;
+            LOG_WARNING << "Invalid timeout seconds in JSON:" << json_values.at("timeout_seconds");
         }
     }
     
     if (json_values.contains("max_body_size") && json_values.at("max_body_size").is_number()) {
-        auto size_val = json_values.at("max_body_size").as_int64();
-        if(valid_max_body_size(size_val)) {
-            this->config_vals_.max_body_size_ = static_cast<size_t>(size_val);
+        auto size_val = json_checked_int(json_values.at("max_body_size"));
+        if (size_val && valid_max_body_size(*size_val)) {
+            this->config_vals_.max_body_size_ = static_cast<size_t>(*size_val);
         } else {
-            LOG_WARNING << "Invalid max body size in JSON:" << size_val;
+            LOG_WARNING << "Invalid max body size in JSON:" << json_values.at("max_body_size");
         }
     }
 
     if (json_values.contains("max_connections") && json_values.at("max_connections").is_number()) {
-        auto size_val = json_values.at("max_connections").as_int64();
-        if(valid_max_connections(size_val)) {
-            this->config_vals_.max_connections_ = static_cast<size_t>(size_val);
+        auto size_val = json_checked_int(json_values.at("max_connections"));
+        if (size_val && valid_max_connections(*size_val)) {
+            this->config_vals_.max_connections_ = static_cast<size_t>(*size_val);
         } else {
-            LOG_WARNING << "Invalid max connections in JSON:" << size_val;
+            LOG_WARNING << "Invalid max connections in JSON:" << json_values.at("max_connections");
         }
     }
 
     if (json_values.contains("max_cache_entries") && json_values.at("max_cache_entries").is_number()) {
-        auto size_val = json_values.at("max_cache_entries").as_int64();
-        if(valid_max_cache_entries(size_val)) {
-            this->config_vals_.max_cache_entries_ = static_cast<size_t>(size_val);
+        auto size_val = json_checked_int(json_values.at("max_cache_entries"));
+        if (size_val && valid_max_cache_entries(*size_val)) {
+            this->config_vals_.max_cache_entries_ = static_cast<size_t>(*size_val);
         } else {
-            LOG_WARNING << "Invalid max cache entries in JSON:" << size_val;
+            LOG_WARNING << "Invalid max cache entries in JSON:" << json_values.at("max_cache_entries");
         }
     }
 
     if (json_values.contains("cache_ttl_seconds") && json_values.at("cache_ttl_seconds").is_number()) {
-        auto ttl_val = json_values.at("cache_ttl_seconds").as_int64();
-        if(valid_cache_ttl_seconds(ttl_val)) {
-            this->config_vals_.cache_ttl_seconds_ = static_cast<unsigned int>(ttl_val);
+        auto ttl_val = json_checked_int(json_values.at("cache_ttl_seconds"));
+        if (ttl_val && valid_cache_ttl_seconds(*ttl_val)) {
+            this->config_vals_.cache_ttl_seconds_ = static_cast<unsigned int>(*ttl_val);
         } else {
-            LOG_WARNING << "Invalid cache ttl seconds in JSON:" << ttl_val;
+            LOG_WARNING << "Invalid cache ttl seconds in JSON:" << json_values.at("cache_ttl_seconds");
         }
     }
 }

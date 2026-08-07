@@ -343,3 +343,57 @@ TEST_F(TempConfigTest, InvalidValuesFallbackToDefaults)
     EXPECT_EQ(cfg.port(), 8080);
     EXPECT_EQ(cfg.threads(), 1);
 }
+
+TEST_F(TempConfigTest, FloatValuesRejectedWithoutException)
+{
+    // 浮点值 is_number() 为 true，as_int64() 会抛异常；
+    // 修复后应安全拒绝并回退默认，不级联丢弃整份配置
+    auto cfg_path = write_config(R"({
+        "port": 8080.5,
+        "threads": 2.5,
+        "timeout_seconds": 30.0,
+        "max_body_size": 1048576.5
+    })");
+
+    const char* argv[] = {"http_server", "--config", cfg_path.c_str()};
+    int argc = 3;
+    configuration cfg(argc, const_cast<char**>(argv));
+
+    EXPECT_EQ(cfg.port(), 8080);
+    EXPECT_EQ(cfg.threads(), 1);
+    EXPECT_EQ(cfg.timeout_seconds(), 30);
+    EXPECT_EQ(cfg.max_body_size(), 1u << 30);
+}
+
+TEST_F(TempConfigTest, OverflowingUintRejectedWithoutException)
+{
+    // 2^63 超出 int64，boost::json 解析为 uint64；as_int64() 会抛异常，
+    // 修复后应安全拒绝，且不影响同文件其他有效配置
+    auto cfg_path = write_config(R"({
+        "port": 9223372036854775808,
+        "threads": 4
+    })");
+
+    const char* argv[] = {"http_server", "--config", cfg_path.c_str()};
+    int argc = 3;
+    configuration cfg(argc, const_cast<char**>(argv));
+
+    EXPECT_EQ(cfg.port(), 8080);
+    EXPECT_EQ(cfg.threads(), 4);
+}
+
+TEST_F(TempConfigTest, StringValuesSilentlyIgnored)
+{
+    // 字符串类型静默忽略（与修复前一致）
+    auto cfg_path = write_config(R"({
+        "port": "8080",
+        "threads": "4"
+    })");
+
+    const char* argv[] = {"http_server", "--config", cfg_path.c_str()};
+    int argc = 3;
+    configuration cfg(argc, const_cast<char**>(argv));
+
+    EXPECT_EQ(cfg.port(), 8080);
+    EXPECT_EQ(cfg.threads(), 1);
+}
