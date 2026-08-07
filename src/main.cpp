@@ -30,8 +30,7 @@ handle_hello(const http::request<http::string_body>& req)
     return res;
 }
 
-// POST /api/echo：按 Content-Type 分流回显（详情见 docs/dynamic_api_service.md）
-//   json -> 原样回显；form-urlencoded -> 转 JSON 回显；其他 -> 400
+// POST /api/echo: 按 Content-Type 分流回显
 http::message_generator
 handle_echo(const http::request<http::string_body>& req)
 {
