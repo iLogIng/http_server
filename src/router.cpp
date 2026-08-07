@@ -1,5 +1,25 @@
 #include "../includes/router.hpp"
 
+namespace {
+
+// 路径前缀检查，确保 / 分割
+bool
+path_prefix_match(boost::beast::string_view target, boost::beast::string_view prefix)
+{
+    if (target.size() < prefix.size() ||
+        target.substr(0, prefix.size()) != prefix) {
+        return false;
+    }
+    // 完全相等，或前缀以路径分隔符结尾
+    if (target.size() == prefix.size() || prefix.back() == '/') {
+        return true;
+    }
+    // 前缀后必须是路径分隔符，防止 /api 误匹配到 /apiary
+    return target[prefix.size()] == '/';
+}
+
+} // namespace
+
 // 注册路由前缀
 void
 server_service::router::
@@ -35,7 +55,7 @@ match(const http::request<http::string_body>& req) const
     Handler best_match = nullptr;
     std::size_t best_len = 0;
     for (const auto& pre : prefix_routes_) {
-        if (pre.method == method && target.find(pre.prefix) == 0) {
+        if (pre.method == method && path_prefix_match(target, pre.prefix)) {
             if (pre.prefix.length() > best_len) {
                 best_len = pre.prefix.length();
                 best_match = pre.handler_;

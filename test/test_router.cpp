@@ -4,7 +4,7 @@
 
 using namespace server_service;
 
-// 辅助函数：构造请求
+// 辅助函数 构造请求
 static http::request<http::string_body>
 make_req(http::verb method, const std::string& target)
 {
@@ -107,6 +107,105 @@ TEST(RouterPrefixRouteTest, NoPrefixMatch)
 
     auto h = r.match(make_req(http::verb::get, "/api/data"));
     EXPECT_FALSE(h);
+}
+
+// ============================================================
+// 路径段边界（/api 不应误匹配 /apiary）
+// ============================================================
+
+TEST(RouterPrefixRouteTest, SegmentBoundaryNoPartialSegmentMatch)
+{
+    router r;
+    r.add_prefix_route(http::verb::get, "/api",
+        [](const auto&) -> http::message_generator {
+            http::response<http::string_body> res{http::status::ok, 11};
+            return res;
+        });
+
+    // /apiary 只是 /api 的字符串超集，并非路径段延续，不应匹配
+    EXPECT_FALSE(r.match(make_req(http::verb::get, "/apiary")));
+    EXPECT_FALSE(r.match(make_req(http::verb::get, "/apix")));
+}
+
+TEST(RouterPrefixRouteTest, SegmentBoundaryMatchesExactAndChildren)
+{
+    router r;
+    bool called = false;
+    r.add_prefix_route(http::verb::get, "/api",
+        [&](const auto&) -> http::message_generator {
+            called = true;
+            http::response<http::string_body> res{http::status::ok, 11};
+            return res;
+        });
+
+    // 精确相等
+    auto h1 = r.match(make_req(http::verb::get, "/api"));
+    ASSERT_TRUE(h1);
+    h1(make_req(http::verb::get, "/api"));
+    EXPECT_TRUE(called);
+
+    // 路径段延续
+    EXPECT_TRUE(r.match(make_req(http::verb::get, "/api/hello")));
+    EXPECT_TRUE(r.match(make_req(http::verb::get, "/api/v2/users")));
+}
+
+TEST(RouterPrefixRouteTest, TrailingSlashPrefixMatchesChildren)
+{
+    router r;
+    r.add_prefix_route(http::verb::get, "/api/",
+        [](const auto&) -> http::message_generator {
+            http::response<http::string_body> res{http::status::ok, 11};
+            return res;
+        });
+
+    // 尾斜杠前缀本身处于段边界，段延续可直接匹配
+    EXPECT_TRUE(r.match(make_req(http::verb::get, "/api/hello")));
+    // 但仍不匹配无斜杠的相似路径
+    EXPECT_FALSE(r.match(make_req(http::verb::get, "/apiary")));
+}
+
+TEST(RouterPrefixRouteTest, RootPrefixStillMatchesEverything)
+{
+    router r;
+    r.add_prefix_route(http::verb::get, "/",
+        [](const auto&) -> http::message_generator {
+            http::response<http::string_body> res{http::status::ok, 11};
+            return res;
+        });
+
+    // 根前缀保持全匹配（静态文件服务的兜底路由依赖此行为）
+    EXPECT_TRUE(r.match(make_req(http::verb::get, "/index.html")));
+    EXPECT_TRUE(r.match(make_req(http::verb::get, "/api/hello")));
+    EXPECT_TRUE(r.match(make_req(http::verb::get, "/")));
+}
+
+TEST(RouterPrefixRouteTest, LongestPrefixRespectsBoundary)
+{
+    router r;
+    std::string which;
+
+    r.add_prefix_route(http::verb::get, "/api",
+        [&](const auto&) -> http::message_generator {
+            which = "api";
+            http::response<http::string_body> res{http::status::ok, 11};
+            return res;
+        });
+
+    r.add_prefix_route(http::verb::get, "/api/v2",
+        [&](const auto&) -> http::message_generator {
+            which = "api-v2";
+            http::response<http::string_body> res{http::status::ok, 11};
+            return res;
+        });
+
+    // /api/v2/users 命中最长前缀 /api/v2
+    auto h = r.match(make_req(http::verb::get, "/api/v2/users"));
+    ASSERT_TRUE(h);
+    h(make_req(http::verb::get, "/api/v2/users"));
+    EXPECT_EQ(which, "api-v2");
+
+    // /apiary/v2 不匹配 /api/v2，也不匹配 /api（边界外）
+    EXPECT_FALSE(r.match(make_req(http::verb::get, "/apiary/v2")));
 }
 
 // ============================================================
