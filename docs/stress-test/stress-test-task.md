@@ -50,7 +50,7 @@
 
 ## 输出格式
 
-**输出路径：`./stress-test-record`**
+**输出路径：`项目根目录/docs/stress-test/stress-test-record`**
 
 **文件名称：`stress_test_yyyy_mm_dd.md`，其中 `yyy_mm_dd` 为压测实际开始的时间点，若存在相同日期的压测任务，则添加 `_tnn` 后缀，其中 `nn` 为该文件标号（00~99）**
 
