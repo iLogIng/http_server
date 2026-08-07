@@ -204,6 +204,82 @@ target_path(beast::string_view target)
     return (pos == beast::string_view::npos) ? target : target.substr(0, pos);
 }
 
+// URL 解码（RFC 3986 §2.1）：%XX 转义、'+' -> 空格
+// 截断的 % 或非法十六进制 -> false
+bool
+server_utils::
+url_decode(beast::string_view s, std::string& out)
+{
+    auto hex_val = [](char c) -> int {
+        if (c >= '0' && c <= '9') return c - '0';
+        if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+        if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+        return -1;
+    };
+    out.clear();
+    out.reserve(s.size());
+    for (std::size_t i = 0; i < s.size(); ++i) {
+        if (s[i] == '+') {
+            out += ' ';
+        } else if (s[i] == '%') {
+            // 截断的 %XX
+            if (i + 2 >= s.size())
+                return false;
+            int hi = hex_val(s[i + 1]);
+            int lo = hex_val(s[i + 2]);
+            // 非法十六进制
+            if (hi < 0 || lo < 0)
+                return false;
+            out += static_cast<char>((hi << 4) | lo);
+            i += 2;
+        } else {
+            out += s[i];
+        }
+    }
+    return true;
+}
+
+// 解析 form-urlencoded（application/x-www-form-urlencoded）请求体
+// 按 '&' 分段，每段按 '=' 切 key/value，均经 url_decode
+// 无 '=' 的段 key 取整段、值为空串
+void
+server_utils::
+parse_urlencoded(beast::string_view body, std::unordered_map<std::string, std::string>& out)
+{
+    out.clear();
+    std::size_t pos = 0;
+    while (pos <= body.size()) {
+        auto amp = body.find('&', pos);
+        std::size_t seg_end = (amp == beast::string_view::npos) ? body.size() : amp;
+        // 跳过空段：空 body 或尾部 & 不产生空键条目
+        if (pos == seg_end) {
+            if (amp == beast::string_view::npos) break;
+            pos = amp + 1;
+            continue;
+        }
+        auto eq = body.find('=', pos);
+        if (eq == beast::string_view::npos || eq > seg_end) {
+            // 无 '=' 的段 key = 整段，空值
+            std::string key;
+            if (!url_decode(body.substr(pos, seg_end - pos), key)) {
+                key = std::string(body.substr(pos, seg_end - pos));
+            }
+            out[key] = "";
+        } else {
+            std::string key, val;
+            if (!url_decode(body.substr(pos, eq - pos), key)) {
+                key = std::string(body.substr(pos, eq - pos));
+            }
+            if (!url_decode(body.substr(eq + 1, seg_end - eq - 1), val)) {
+                val = std::string(body.substr(eq + 1, seg_end - eq - 1));
+            }
+            out[key] = val;
+        }
+        if (amp == beast::string_view::npos) break;
+        pos = amp + 1;
+    }
+}
+
 // 防止路径穿越
 bool
 server_utils::

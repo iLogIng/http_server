@@ -3,6 +3,7 @@
 #include <optional>
 #include <string>
 #include <ctime>
+#include <unordered_map>
 
 #include <boost/beast.hpp>
 #include <boost/filesystem.hpp>
@@ -43,6 +44,14 @@ mime_type(beast::string_view path);
 // (如 /index.html?x=1 -> /index.html)
 beast::string_view
 target_path(beast::string_view target);
+
+// URL 解码（%XX、'+' -> 空格），解码失败返回 false
+bool
+url_decode(beast::string_view s, std::string& out);
+
+// 解析 form-urlencoded 请求体为键值表
+void
+parse_urlencoded(beast::string_view body, std::unordered_map<std::string, std::string>& out);
 
 bool
 is_safe_path(beast::string_view path);

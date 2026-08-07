@@ -1,6 +1,7 @@
 set(SOURCES
     main.cpp
     config.cpp
+    dynamic_api_service.cpp
     graceful_shutdown.cpp
     request_handler.cpp
     router.cpp
@@ -12,6 +13,7 @@ set(SOURCES
 set(HEADERS
     ../includes/cache.hpp
     ../includes/config.hpp
+    ../includes/dynamic_api_service.hpp
     ../includes/graceful_shutdown.hpp
     ../includes/logger.hpp
     ../includes/request_handler.hpp
