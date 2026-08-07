@@ -8,7 +8,7 @@ namespace fs = boost::filesystem;
 
 namespace {
 
-// 无异常抛出数字解析
+// 无异常抛出的数字解析
 bool
 parse_size(boost::beast::string_view s, std::size_t& out)
 {
@@ -16,7 +16,8 @@ parse_size(boost::beast::string_view s, std::size_t& out)
         return false;
     std::size_t v = 0;
     for (char c : s) {
-        if (c < '0' || c > '9') return false;
+        if (c < '0' || c > '9')
+            return false;
         v = v * 10 + static_cast<std::size_t>(c - '0');
     }
     out = v;
@@ -27,9 +28,30 @@ parse_size(boost::beast::string_view s, std::size_t& out)
 boost::beast::string_view
 trim_ows(boost::beast::string_view s)
 {
-    while (!s.empty() && (s.front() == ' ' || s.front() == '\t')) s.remove_prefix(1);
-    while (!s.empty() && (s.back() == ' ' || s.back() == '\t')) s.remove_suffix(1);
+    while (!s.empty() && (s.front() == ' ' || s.front() == '\t'))
+        s.remove_prefix(1);
+    while (!s.empty() && (s.back() == ' ' || s.back() == '\t'))
+        s.remove_suffix(1);
     return s;
+}
+
+// 去除 ETag 的 W/ 弱验证器前缀
+boost::beast::string_view
+strip_weak_prefix(boost::beast::string_view etag)
+{
+    if (etag.size() >= 2 &&
+        etag[0] == 'W' && etag[1] == '/')   // W/ 弱验证器前缀
+    {
+        etag.remove_prefix(2);
+    }
+    return etag;
+}
+
+// RFC 7232 弱比较: 忽略 W/ 前缀后字符串相等
+bool
+weak_etag_equal(boost::beast::string_view a, boost::beast::string_view b)
+{
+    return strip_weak_prefix(a) == strip_weak_prefix(b);
 }
 }   // namespace
 
@@ -435,9 +457,28 @@ is_not_modified(
     beast::string_view etag,
     std::time_t last_modified_time)
 {
+    // RFC 7232 If-None-Match 优先于 If-Modified-Since
     auto inm = req[http::field::if_none_match];
     if (!inm.empty()) {
-        return inm == "*" || inm == etag;
+        // "*" 匹配任意实体
+        if (trim_ows(inm) == "*") {
+            return true;
+        }
+        // 逗号分隔 ETag 列表，任一项弱匹配即命中
+        beast::string_view rest = inm;
+        while (!rest.empty()) {
+            auto comma = rest.find(',');
+            auto item =
+                trim_ows((comma == beast::string_view::npos) ? rest : rest.substr(0, comma));
+            if (!item.empty() && weak_etag_equal(item, etag)) {
+                return true;
+            }
+            if (comma == beast::string_view::npos) {
+                break;
+            }
+            rest = rest.substr(comma + 1);
+        }
+        return false;
     }
     auto ims = req[http::field::if_modified_since];
     if (!ims.empty()) {
