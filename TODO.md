@@ -39,7 +39,9 @@
 ### 阶段二 · 协议完整性
 
 - [x] **Range 请求**：解析 `Range` 头，用 `http::response<http::file_body>` 的 `seek` 实现断点续传；为 sendfile 打底
-- [ ] **gzip 压缩传输**：按 `Accept-Encoding` 压缩文本响应，加 `Content-Encoding: gzip` + `Vary`
+- [x] **gzip 压缩传输**：按 `Accept-Encoding` 压缩文本响应，加 `Content-Encoding: gzip` + `Vary`
+  - 文本预压缩随 LRU 缓存保存，warm 路径零压缩开销；Range 请求不压缩（RFC 7233）
+  - 304/206/HEAD 响应均回 `Vary: Accept-Encoding`；HEAD 报告压缩后长度
 - [ ] **DELETE/PUT 方法**：路由扩展动态 API（DELETE 需权限校验）
 
 ### 阶段三 · HTTPS（TLS）

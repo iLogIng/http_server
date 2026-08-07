@@ -27,7 +27,9 @@
 > 动态 API 服务（端点注册表：method + path 自由注册） POST 请求解析
 > （form-urlencoded / JSON 回显） OPTIONS 全局支持（动态 Allow 头） 405 + Allow
 >
-> Google Test 单元测试 + 端到端集成测试（129 用例全通过）
+> gzip 内容协商（Accept-Encoding + Vary，文本预压缩缓存，Range 请求不压缩）
+>
+> Google Test 单元测试 + 端到端集成测试（140 用例全通过）
 
 -----
 
