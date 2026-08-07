@@ -57,6 +57,70 @@ TEST(UtilsTargetPathTest, FragmentStripped)
 }
 
 // ============================================================
+// url_decode / parse_urlencoded
+// ============================================================
+
+TEST(UtilsUrlDecodeTest, BasicDecoding)
+{
+    std::string out;
+    EXPECT_TRUE(url_decode("hello%20world", out));
+    EXPECT_EQ(out, "hello world");
+    EXPECT_TRUE(url_decode("c%2B%2B", out));
+    EXPECT_EQ(out, "c++");
+    EXPECT_TRUE(url_decode("a+b+c", out));
+    EXPECT_EQ(out, "a b c");
+    EXPECT_TRUE(url_decode("%E4%B8%AD%E6%96%87", out));
+    EXPECT_EQ(out, "中文");
+    EXPECT_TRUE(url_decode("plain", out));
+    EXPECT_EQ(out, "plain");
+}
+
+TEST(UtilsUrlDecodeTest, InvalidEncodingReturnsFalse)
+{
+    std::string out;
+    EXPECT_FALSE(url_decode("abc%", out));      // 截断 %
+    EXPECT_FALSE(url_decode("abc%2", out));     // 截断
+    EXPECT_FALSE(url_decode("%zz", out));       // 非法十六进制
+    EXPECT_FALSE(url_decode("%0", out));
+}
+
+TEST(UtilsParseUrlencodedTest, MultipleFields)
+{
+    std::unordered_map<std::string, std::string> form;
+    parse_urlencoded("name=alice&age=20&city=beijing", form);
+    EXPECT_EQ(form.size(), 3u);
+    EXPECT_EQ(form["name"], "alice");
+    EXPECT_EQ(form["age"], "20");
+    EXPECT_EQ(form["city"], "beijing");
+}
+
+TEST(UtilsParseUrlencodedTest, DecodingApplied)
+{
+    std::unordered_map<std::string, std::string> form;
+    parse_urlencoded("lang=c%2B%2B&note=hello+world", form);
+    EXPECT_EQ(form["lang"], "c++");
+    EXPECT_EQ(form["note"], "hello world");
+}
+
+TEST(UtilsParseUrlencodedTest, SegmentWithoutEqualsHasEmptyValue)
+{
+    std::unordered_map<std::string, std::string> form;
+    parse_urlencoded("flag&name=alice", form);
+    EXPECT_EQ(form["flag"], "");
+    EXPECT_EQ(form["name"], "alice");
+}
+
+TEST(UtilsParseUrlencodedTest, EmptyAndTrailingAmp)
+{
+    std::unordered_map<std::string, std::string> form;
+    parse_urlencoded("", form);
+    EXPECT_TRUE(form.empty());
+    parse_urlencoded("name=alice&", form);
+    EXPECT_EQ(form.size(), 1u);
+    EXPECT_EQ(form["name"], "alice");
+}
+
+// ============================================================
 // is_safe_path
 // ============================================================
 

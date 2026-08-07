@@ -79,6 +79,28 @@ target_include_directories(test_config PRIVATE
 )
 gtest_discover_tests(test_config)
 
+# ---- dynamic_api test ----
+add_executable(test_dynamic_api
+    test_dynamic_api.cpp
+    ${PROJECT_SOURCE_DIR}/src/dynamic_api_service.cpp
+    ${PROJECT_SOURCE_DIR}/src/utils.cpp
+)
+target_link_libraries(test_dynamic_api PRIVATE
+    project_warnings
+    project_defs
+    GTest::gtest GTest::gtest_main
+    Boost::filesystem
+    Boost::system
+    Boost::thread
+    Boost::log
+    Boost::log_setup
+)
+target_include_directories(test_dynamic_api PRIVATE
+    ${PROJECT_SOURCE_DIR}/src
+    ${PROJECT_SOURCE_DIR}/includes
+)
+gtest_discover_tests(test_dynamic_api)
+
 # ---- integration test (end-to-end) ----
 add_executable(test_integration test_integration.cpp)
 target_compile_definitions(test_integration PRIVATE
@@ -99,16 +121,17 @@ gtest_discover_tests(test_integration)
 
 # ---- custom target: build all tests ----
 add_custom_target(all-test
-    DEPENDS test_logger test_utils test_router test_config test_integration
+    DEPENDS test_logger test_utils test_router test_config test_dynamic_api test_integration
 )
 
 # ---- custom target: build and run all tests ----
 add_custom_target(all-test-run
-    DEPENDS test_logger test_utils test_router test_config test_integration
+    DEPENDS test_logger test_utils test_router test_config test_dynamic_api test_integration
     COMMAND $<TARGET_FILE:test_logger>
     COMMAND $<TARGET_FILE:test_utils>
     COMMAND $<TARGET_FILE:test_router>
     COMMAND $<TARGET_FILE:test_config>
+    COMMAND $<TARGET_FILE:test_dynamic_api>
     COMMAND $<TARGET_FILE:test_integration>
     COMMENT "Running all tests..."
 )

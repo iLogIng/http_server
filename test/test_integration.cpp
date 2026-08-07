@@ -363,6 +363,63 @@ TEST_F(IntegrationTest, GetApiHelloEndpoint)
     EXPECT_EQ(res.body(), R"({"message":"Hello"})");
 }
 
+TEST_F(IntegrationTest, PostFormUrlencodedEchoesJson)
+{
+    // form-urlencoded -> JSON 回显（键序不定，按内容断言）
+    auto res = send_request(http::verb::post, "/api/echo",
+        "name=alice&lang=c%2B%2B&note=hello+world",
+        "application/x-www-form-urlencoded");
+    EXPECT_EQ(res.result(), http::status::ok);
+    EXPECT_EQ(res[http::field::content_type], "application/json");
+    EXPECT_NE(res.body().find("\"name\":\"alice\""), std::string::npos);
+    EXPECT_NE(res.body().find("\"lang\":\"c++\""), std::string::npos);
+    EXPECT_NE(res.body().find("\"note\":\"hello world\""), std::string::npos);
+}
+
+TEST_F(IntegrationTest, PostJsonEchoesRaw)
+{
+    // JSON 原样回显
+    auto payload = R"({"key":"value","n":42})";
+    auto res = send_request(http::verb::post, "/api/echo", payload,
+        "application/json");
+    EXPECT_EQ(res.result(), http::status::ok);
+    EXPECT_EQ(res[http::field::content_type], "application/json");
+    EXPECT_EQ(res.body(), payload);
+}
+
+TEST_F(IntegrationTest, PostUnsupportedContentTypeReturns400)
+{
+    auto res = send_request(http::verb::post, "/api/echo", "hello", "text/plain");
+    EXPECT_EQ(res.result(), http::status::bad_request);
+}
+
+TEST_F(IntegrationTest, OptionsRequestReturnsDynamicAllow)
+{
+    // OPTIONS 是全局方法：Allow 由端点注册表动态计算
+    // /api/hello 注册 GET -> GET 隐含 HEAD
+    auto res = send_request(http::verb::options, "/api/hello");
+    EXPECT_EQ(res.result(), http::status::ok);
+    EXPECT_EQ(res[http::field::allow], "GET, HEAD, OPTIONS");
+
+    // /api/echo 仅注册 POST
+    res = send_request(http::verb::options, "/api/echo");
+    EXPECT_EQ(res.result(), http::status::ok);
+    EXPECT_EQ(res[http::field::allow], "POST, OPTIONS");
+
+    // 未注册路径：仅 OPTIONS
+    res = send_request(http::verb::options, "/index.html");
+    EXPECT_EQ(res.result(), http::status::ok);
+    EXPECT_EQ(res[http::field::allow], "OPTIONS");
+}
+
+TEST_F(IntegrationTest, GetOnPostOnlyEndpointReturns405WithAllow)
+{
+    // 路径存在但方法未注册 -> 405 + Allow
+    auto res = send_request(http::verb::get, "/api/echo");
+    EXPECT_EQ(res.result(), http::status::method_not_allowed);
+    EXPECT_EQ(res[http::field::allow], "POST, OPTIONS");
+}
+
 TEST_F(IntegrationTest, GetApiHelloWithQueryString)
 {
     // query 剥离后应匹配 /api/hello 精确路由

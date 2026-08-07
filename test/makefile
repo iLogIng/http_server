@@ -17,6 +17,7 @@ EXEC_DIR = $(ROOT)/test/exec
 SRC_UTILS   = $(ROOT)/src/utils.cpp
 SRC_ROUTER  = $(ROOT)/src/router.cpp
 SRC_CONFIG  = $(ROOT)/src/config.cpp
+SRC_DYNAMIC_API = $(ROOT)/src/dynamic_api_service.cpp
 
 # 确保 test exec 目录存在
 $(EXEC_DIR):
@@ -32,12 +33,16 @@ test_logger: test_logger.cpp $(ROOT)/includes/logger.hpp | $(EXEC_DIR)
 test_utils: test_utils.cpp $(SRC_UTILS) | $(EXEC_DIR)
 	$(CXX) $(CXXFLAGS) $^ $(BOOST_LIBS) $(GTEST_LIBS) -o $(EXEC_DIR)/$@
 
-# router
-test_router: test_router.cpp $(SRC_ROUTER) | $(EXEC_DIR)
+# router (依赖 utils.cpp 的 target_path)
+test_router: test_router.cpp $(SRC_ROUTER) $(SRC_UTILS) | $(EXEC_DIR)
 	$(CXX) $(CXXFLAGS) $^ $(BOOST_LIBS) $(GTEST_LIBS) -o $(EXEC_DIR)/$@
 
 # config
 test_config: test_config.cpp $(SRC_CONFIG) | $(EXEC_DIR)
+	$(CXX) $(CXXFLAGS) $^ $(BOOST_LIBS) $(GTEST_LIBS) -o $(EXEC_DIR)/$@
+
+# dynamic_api
+test_dynamic_api: test_dynamic_api.cpp $(SRC_DYNAMIC_API) $(SRC_UTILS) | $(EXEC_DIR)
 	$(CXX) $(CXXFLAGS) $^ $(BOOST_LIBS) $(GTEST_LIBS) -o $(EXEC_DIR)/$@
 
 # integration (端到端，需要已构建的 http_server)
@@ -63,13 +68,16 @@ test_router.run: test_router
 test_config.run: test_config
 	$(EXEC_DIR)/test_config
 
+test_dynamic_api.run: test_dynamic_api
+	$(EXEC_DIR)/test_dynamic_api
+
 # ============================================================
 # 批量目标
 # ============================================================
 
 .PHONY: all-test all-test-run clean-test
 
-all-test: test_logger test_utils test_router test_config test_integration
+all-test: test_logger test_utils test_router test_config test_dynamic_api test_integration
 
 all-test-run: all-test
 	@echo "=== Running all tests ==="
@@ -77,6 +85,7 @@ all-test-run: all-test
 	@$(EXEC_DIR)/test_utils
 	@$(EXEC_DIR)/test_router
 	@$(EXEC_DIR)/test_config
+	@$(EXEC_DIR)/test_dynamic_api
 	@$(EXEC_DIR)/test_integration
 	@echo "=== All tests passed ==="
 
@@ -85,4 +94,5 @@ clean-test:
 	rm -f $(EXEC_DIR)/test_utils
 	rm -f $(EXEC_DIR)/test_router
 	rm -f $(EXEC_DIR)/test_config
+	rm -f $(EXEC_DIR)/test_dynamic_api
 	rm -f $(EXEC_DIR)/test_integration
