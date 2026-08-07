@@ -28,6 +28,8 @@ class static_file_service
         std::string last_modified;
         std::time_t last_modified_time = 0;
         std::chrono::steady_clock::time_point expires_at;
+        // gzip 预压缩版本（仅可压缩文本）
+        std::shared_ptr<const std::string> compressed;
     };
     using file_body_type = http::file_body::value_type;
     using lru_cache_type = server_cache::lru_cache<std::string, cached_file>;
@@ -71,23 +73,25 @@ private:
         const std::string& full_path
     ) const;
 
-    // 构建 GET 内容响应: 304 优先 -> Range（206/416）-> 200
+    // 构建 GET 内容响应: 304 优先 -> Range（206/416）-> gzip 协商 -> 200
     http::message_generator build_content_response(
         const http::request<http::string_body>& req,
         const std::string& full_path,
         const std::shared_ptr<const std::string>& content,
+        const std::shared_ptr<const std::string>& compressed,
         const std::string& etag,
         const std::string& last_modified,
         std::time_t last_modified_time) const;
 
-    // 构建 HEAD 响应
+    // 构建 HEAD 响应：同上，但无 body；compressed_size > 0 表示可用 gzip 版本
     http::message_generator build_head_response(
         const http::request<http::string_body>& req,
         const std::string& full_path,
         std::size_t total,
         const std::string& etag,
         const std::string& last_modified,
-        std::time_t last_modified_time) const;
+        std::time_t last_modified_time,
+        std::size_t compressed_size = 0) const;
 
 private:
     // 共享字符串体，避免拷贝

@@ -68,32 +68,35 @@ as_handler() const {
     };
 }
 
-// 构建 响应体
-// 304 优先 -> Range（206/416）-> 200
+// 构建 响应体：304 优先 -> Range（206/416）-> gzip 协商 -> 200
 server_service::http::message_generator
 server_service::static_file_service::
 build_content_response(
     const http::request<http::string_body>& req,
     const std::string& full_path,
     const std::shared_ptr<const std::string>& content,
+    const std::shared_ptr<const std::string>& compressed,
     const std::string& etag,
     const std::string& last_modified,
     std::time_t last_modified_time) const
 {
-    // 条件请求 -> 304 优先于 Range
+    // 304 优先，回 Vary 保持缓存一致性
     if(server_utils::is_not_modified(req, etag, last_modified_time)) {
-        return server_utils::make_not_modified(req, etag, last_modified);
+        auto res = server_utils::make_not_modified(req, etag, last_modified);
+        res.set(http::field::vary, "Accept-Encoding");
+        return res;
     }
 
     auto range = apply_range(req, content->size());
 
-    // 206 Range 满足，切片发送
+    // 206 切片发送（Range 请求不压缩）
     if(range.status == http::status::partial_content) {
         http::response<shared_slice_body> res{http::status::partial_content, req.version()};
         res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
         res.set(http::field::content_type, server_utils::mime_type(full_path));
         res.set(http::field::etag, etag);
         res.set(http::field::last_modified, last_modified);
+        res.set(http::field::vary, "Accept-Encoding");
         res.set(http::field::content_range, range.content_range);
         res.content_length(range.length);
         res.keep_alive(req.keep_alive());
@@ -111,12 +114,32 @@ build_content_response(
         return res;
     }
 
+    // gzip 协商 -> 压缩 200
+    if (compressed &&
+        server_utils::should_compress(server_utils::mime_type(full_path))) {
+        http::token_list encodings{req[http::field::accept_encoding]};
+        if (encodings.exists("gzip")) {
+            http::response<shared_string_body> res{http::status::ok, req.version()};
+            res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
+            res.set(http::field::content_type, server_utils::mime_type(full_path));
+            res.set(http::field::etag, etag);
+            res.set(http::field::last_modified, last_modified);
+            res.set(http::field::content_encoding, "gzip");
+            res.set(http::field::vary, "Accept-Encoding");
+            res.content_length(compressed->size());
+            res.keep_alive(req.keep_alive());
+            res.body() = compressed;
+            return res;
+        }
+    }
+
     // 200 无 Range / 忽略
     http::response<shared_string_body> res{http::status::ok, req.version()};
     res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
     res.set(http::field::content_type, server_utils::mime_type(full_path));
     res.set(http::field::etag, etag);
     res.set(http::field::last_modified, last_modified);
+    res.set(http::field::vary, "Accept-Encoding");
     res.content_length(content->size());
     res.keep_alive(req.keep_alive());
     res.body() = content;
@@ -132,11 +155,14 @@ build_head_response(
     std::size_t total,
     const std::string& etag,
     const std::string& last_modified,
-    std::time_t last_modified_time) const
+    std::time_t last_modified_time,
+    std::size_t compressed_size) const
 {
-    // 条件请求 -> 304（优先于 Range）
+    // 条件请求 -> 304（优先于 Range），回 Vary 保持缓存一致性
     if(server_utils::is_not_modified(req, etag, last_modified_time)) {
-        return server_utils::make_not_modified(req, etag, last_modified);
+        auto res = server_utils::make_not_modified(req, etag, last_modified);
+        res.set(http::field::vary, "Accept-Encoding");
+        return res;
     }
 
     auto range = apply_range(req, total);
@@ -146,8 +172,20 @@ build_head_response(
     res.set(http::field::content_type, server_utils::mime_type(full_path));
     res.set(http::field::etag, etag);
     res.set(http::field::last_modified, last_modified);
+    res.set(http::field::vary, "Accept-Encoding");
     if(!range.content_range.empty()) {
         res.set(http::field::content_range, range.content_range);
+    }
+    // gzip 协商 -> 长度与 GET 一致
+    if (range.status == http::status::ok && compressed_size > 0 &&
+        server_utils::should_compress(server_utils::mime_type(full_path))) {
+        http::token_list encodings{req[http::field::accept_encoding]};
+        if (encodings.exists("gzip")) {
+            res.set(http::field::content_encoding, "gzip");
+            res.content_length(compressed_size);
+            res.keep_alive(req.keep_alive());
+            return res;
+        }
     }
     res.content_length(range.length);
     res.keep_alive(req.keep_alive());
@@ -169,7 +207,7 @@ handle_GET_request(
     // 缓存命中且未过期
     if(cached && cached->expires_at > now) {
         return build_content_response(req, full_path, cached->content,
-            cached->etag, cached->last_modified, cached->last_modified_time);
+            cached->compressed, cached->etag, cached->last_modified, cached->last_modified_time);
     }
     // 命中但已过期，驱逐后重新读盘
     if (cached) {
@@ -199,11 +237,25 @@ handle_GET_request(
     const std::string etag = server_utils::make_etag(mtime_t, size);
     const std::string last_modified = server_utils::to_http_date(mtime_t);
 
+    // 文本预压缩，随缓存保存
+    std::shared_ptr<const std::string> compressed;
+    if (server_utils::should_compress(server_utils::mime_type(full_path))) {
+        std::string gz;
+        if (server_utils::gzip_compress(*content, gz)) {
+            compressed = std::make_shared<const std::string>(std::move(gz));
+        }
+    }
+
+    // 先响应后入缓存，避免 move 后空指针
+    auto resp = build_content_response(req, full_path, content, compressed,
+        etag, last_modified, mtime_t);
+
     lru_cache_.put(full_path,
         cached_file{content, etag, last_modified, mtime_t,
-            now + std::chrono::seconds(config_.cache_ttl_seconds())});
+            now + std::chrono::seconds(config_.cache_ttl_seconds()),
+            std::move(compressed)});
 
-    return build_content_response(req, full_path, content, etag, last_modified, mtime_t);
+    return resp;
 }
 
 // 构建 HEAD 响应
@@ -220,7 +272,8 @@ handle_HEAD_request(
     auto cached = lru_cache_.get(full_path);
     if (cached && cached->expires_at > now) {
         return build_head_response(req, full_path, cached->content->size(),
-            cached->etag, cached->last_modified, cached->last_modified_time);
+            cached->etag, cached->last_modified, cached->last_modified_time,
+            cached->compressed ? cached->compressed->size() : 0);
     }
     // 命中但已过期，驱逐后重新读元数据
     if (cached) {
@@ -255,7 +308,8 @@ handle_HEAD_request(
     const std::string etag = server_utils::make_etag(mtime_t, size);
     const std::string last_modified = server_utils::to_http_date(mtime_t);
 
-    return build_head_response(req, full_path, size, etag, last_modified, mtime_t);
+    // HEAD 未命中不读内容，无压缩版本（压缩长度与 GET 缓存命中后一致）
+    return build_head_response(req, full_path, size, etag, last_modified, mtime_t, 0);
 }
 
 server_service::http::message_generator
