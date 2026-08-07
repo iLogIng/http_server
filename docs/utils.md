@@ -38,6 +38,14 @@
   - 解析 `application/x-www-form-urlencoded` 请求体为键值表
   - 按 `&` 分段、`=` 切分，键值均经 url_decode；无 `=` 段键值为空串；空段跳过
 
+- **should_compress(beast::string_view mime)**
+  - 按 MIME 判断内容是否可压缩：`text/*` 与 `application/json`、`application/javascript`、`application/xml`、`image/svg+xml`
+  - 图片/二进制（png/jpeg/octet-stream 等）不压缩
+
+- **gzip_compress(beast::string_view input, std::string& out)**
+  - gzip 压缩（zlib deflate + gzip 头尾，windowBits = 15 + 16）
+  - `deflateBound` 预分配避免扩容；空输入或压缩失败返回 `false`
+
 - **is_safe_path(beast::string_view path)**
   - 防止路径遍历攻击，确保请求路径的安全性
 

@@ -45,12 +45,18 @@
 - **handle_GET_request**
   > 处理 **GET** 请求。优先从 LRU 缓存查询文件内容；
   > 命中则直接返回 `string_body` 响应（零磁盘 I/O）；
-  > 未命中则从磁盘读入文件，写入缓存后返回 `string_body` 响应。
+  > 未命中则从磁盘读入文件，可压缩文本预压缩一份 gzip 版本随缓存保存，写入缓存后返回响应。
   - **args**
     - `const http::request<http::string_body>&`
     - `beast::string_view full_path`
   - **return**
     - `http::message_generator`
+
+- **build_content_response**
+  > 构建 GET 内容响应，处理顺序：304 优先 → Range（206/416）→ gzip 协商 → 200。
+  > gzip 协商：客户端 `Accept-Encoding` 含 gzip 且内容可压缩且有压缩缓存时，
+  > 返回 `Content-Encoding: gzip` + `Vary: Accept-Encoding`；带 Range 的请求不压缩。
+  > 304/206 响应同样回 `Vary` 保持缓存一致性。
 
 - **handle_HEAD_request**
   > 处理 **HEAD** 请求。优先从 LRU 缓存查询文件大小；
