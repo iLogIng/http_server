@@ -175,3 +175,65 @@ TEST_F(UtilsMakeResponseTest, ServiceUnavailable)
     EXPECT_EQ(res.result_int(), 503);
     EXPECT_FALSE(res.body().empty());
 }
+
+// ============================================================
+// is_not_modified — If-None-Match / If-Modified-Since（RFC 7232）
+// ============================================================
+
+TEST(UtilsIsNotModifiedTest, NoConditionalHeadersReturnsFalse)
+{
+    http::request<http::string_body> req{http::verb::get, "/index.html", 11};
+    EXPECT_FALSE(is_not_modified(req, "\"abc-123\"", 1000));
+}
+
+TEST(UtilsIsNotModifiedTest, ExactEtagMatch)
+{
+    http::request<http::string_body> req{http::verb::get, "/index.html", 11};
+    req.set(http::field::if_none_match, "\"abc-123\"");
+    EXPECT_TRUE(is_not_modified(req, "\"abc-123\"", 1000));
+    EXPECT_FALSE(is_not_modified(req, "\"other\"", 1000));
+}
+
+TEST(UtilsIsNotModifiedTest, StarMatchesAnything)
+{
+    http::request<http::string_body> req{http::verb::get, "/index.html", 11};
+    req.set(http::field::if_none_match, "*");
+    EXPECT_TRUE(is_not_modified(req, "\"abc-123\"", 1000));
+}
+
+TEST(UtilsIsNotModifiedTest, ListWithAnyMatch)
+{
+    http::request<http::string_body> req{http::verb::get, "/index.html", 11};
+    req.set(http::field::if_none_match, "\"a\", \"b\", \"abc-123\"");
+    EXPECT_TRUE(is_not_modified(req, "\"abc-123\"", 1000));
+}
+
+TEST(UtilsIsNotModifiedTest, ListWithoutMatchReturnsFalse)
+{
+    http::request<http::string_body> req{http::verb::get, "/index.html", 11};
+    req.set(http::field::if_none_match, "\"a\", \"b\"");
+    EXPECT_FALSE(is_not_modified(req, "\"abc-123\"", 1000));
+}
+
+TEST(UtilsIsNotModifiedTest, WeakComparison)
+{
+    http::request<http::string_body> req{http::verb::get, "/index.html", 11};
+    // 客户端弱 ETag 匹配服务器强 ETag
+    req.set(http::field::if_none_match, "W/\"abc-123\"");
+    EXPECT_TRUE(is_not_modified(req, "\"abc-123\"", 1000));
+    // 服务器弱 ETag 匹配客户端强 ETag
+    req.set(http::field::if_none_match, "\"abc-123\"");
+    EXPECT_TRUE(is_not_modified(req, "W/\"abc-123\"", 1000));
+    // 弱前缀 + 列表
+    req.set(http::field::if_none_match, "W/\"a\", W/\"abc-123\"");
+    EXPECT_TRUE(is_not_modified(req, "\"abc-123\"", 1000));
+}
+
+TEST(UtilsIsNotModifiedTest, IfNoneMatchTakesPriorityOverIfModifiedSince)
+{
+    http::request<http::string_body> req{http::verb::get, "/index.html", 11};
+    // IMS 命中（未来时间）但 INM 不匹配 -> 整体不命中
+    req.set(http::field::if_none_match, "\"nope\"");
+    req.set(http::field::if_modified_since, "Sun, 06 Nov 2099 08:49:37 GMT");
+    EXPECT_FALSE(is_not_modified(req, "\"abc-123\"", 1000));
+}

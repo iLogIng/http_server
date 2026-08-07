@@ -249,6 +249,33 @@ TEST_F(IntegrationTest, GetWithMismatchedEtagReturns200)
     EXPECT_FALSE(res.body().empty());
 }
 
+TEST_F(IntegrationTest, GetWithWeakEtagReturns304)
+{
+    // 客户端以 W/ 弱前缀发送 If-None-Match -> 304
+    auto first = send_request(http::verb::get, "/index.html");
+    ASSERT_EQ(first.result(), http::status::ok);
+    auto etag = first[http::field::etag];
+    ASSERT_FALSE(etag.empty());
+
+    auto res = send_request_with_headers(http::verb::get, "/index.html",
+        {{"If-None-Match", "W/" + std::string(etag)}});
+    EXPECT_EQ(res.result(), http::status::not_modified);
+    EXPECT_TRUE(res.body().empty());
+}
+
+TEST_F(IntegrationTest, GetWithEtagListReturns304)
+{
+    // 逗号分隔列表，包含匹配项 -> 304
+    auto first = send_request(http::verb::get, "/index.html");
+    ASSERT_EQ(first.result(), http::status::ok);
+    auto etag = first[http::field::etag];
+    ASSERT_FALSE(etag.empty());
+
+    auto res = send_request_with_headers(http::verb::get, "/index.html",
+        {{"If-None-Match", "\"wrong-etag\", " + std::string(etag)}});
+    EXPECT_EQ(res.result(), http::status::not_modified);
+}
+
 TEST_F(IntegrationTest, GetWithNewerIfModifiedSinceReturns304)
 {
     // 先 GET 一次填充缓存
