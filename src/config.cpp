@@ -58,6 +58,11 @@ server_config::configuration::
 max_cache_entries() const
 { return config_vals_.max_cache_entries_;}
 
+unsigned int
+server_config::configuration::
+cache_ttl_seconds() const
+{ return config_vals_.cache_ttl_seconds_;}
+
 bool
 server_config::
 valid_address(const std::string &addr)
@@ -118,6 +123,13 @@ valid_max_cache_entries(uint64_t max_cache_entries)
 
 bool
 server_config::
+valid_cache_ttl_seconds(uint64_t cache_ttl_seconds)
+{
+    return cache_ttl_seconds > 0;
+}
+
+bool
+server_config::
 valid_log_level(const std::string &level)
 {
     return level == "trace" || level == "debug" || level == "info" ||
@@ -141,7 +153,8 @@ apply_command_line(int argc, char *argv[])
         ("timeout_seconds,s", prog_opts::value<unsigned int>(), "Timeout in seconds")
         ("max_body_size,b", prog_opts::value<size_t>(), "Maximum body size")
         ("max_connections,n", prog_opts::value<size_t>(), "Max connections")
-        ("max_cache_entries,e", prog_opts::value<size_t>(), "Max Cache Entries");
+        ("max_cache_entries,e", prog_opts::value<size_t>(), "Max Cache Entries")
+        ("cache_ttl_seconds,T", prog_opts::value<unsigned int>(), "Cache TTL in seconds");
 
     prog_opts::variables_map vm;
     try {
@@ -181,6 +194,8 @@ apply_command_line(int argc, char *argv[])
         this->config_vals_.max_connections_ = vm["max_connections"].as<size_t>();
     if(vm.count("max_cache_entries"))
         this->config_vals_.max_cache_entries_ = vm["max_cache_entries"].as<size_t>();
+    if(vm.count("cache_ttl_seconds"))
+        this->config_vals_.cache_ttl_seconds_ = vm["cache_ttl_seconds"].as<unsigned int>();
 
 }
 
@@ -281,6 +296,15 @@ apply_json_config(std::string path)
             LOG_WARNING << "Invalid max cache entries in JSON:" << size_val;
         }
     }
+
+    if (json_values.contains("cache_ttl_seconds") && json_values.at("cache_ttl_seconds").is_number()) {
+        auto ttl_val = json_values.at("cache_ttl_seconds").as_int64();
+        if(valid_cache_ttl_seconds(ttl_val)) {
+            this->config_vals_.cache_ttl_seconds_ = static_cast<unsigned int>(ttl_val);
+        } else {
+            LOG_WARNING << "Invalid cache ttl seconds in JSON:" << ttl_val;
+        }
+    }
 }
 
 // 配置加载：命令行 > JSON > 默认值
@@ -343,6 +367,7 @@ dump() const {
     LOG_INFO << "Max Body Size:         " << config_vals_.max_body_size_ << " bytes";
     LOG_INFO << "Max Connections:       " << config_vals_.max_connections_;
     LOG_INFO << "Max Cache Entries:     " << config_vals_.max_cache_entries_;
+    LOG_INFO << "Cache TTL (sec):       " << config_vals_.cache_ttl_seconds_;
 }
 
 

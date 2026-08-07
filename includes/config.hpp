@@ -24,9 +24,10 @@ struct config_values
     std::string         log_level_ = "debug";
     unsigned int        threads_ = 1;
     unsigned int        timeout_seconds_ = 30;
-    std::size_t         max_body_size_ = 1 << 20;
+    std::size_t         max_body_size_ = 1 << 30;
     std::size_t         max_connections_ = 10000;
     std::size_t         max_cache_entries_ = 0;
+    unsigned int        cache_ttl_seconds_ = 30;
 };
 
 bool
@@ -52,6 +53,9 @@ valid_max_connections(uint64_t max_connections);
 
 bool
 valid_max_cache_entries(uint64_t max_cache_entries);
+
+bool
+valid_cache_ttl_seconds(uint64_t cache_ttl_seconds);
 
 bool
 valid_log_level(const std::string &level);
@@ -90,6 +94,7 @@ public:
     std::size_t max_body_size() const;
     std::size_t max_connections() const;
     std::size_t max_cache_entries() const;
+    unsigned int cache_ttl_seconds() const;
 
     void dump() const;
 
