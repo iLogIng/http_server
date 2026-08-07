@@ -36,6 +36,7 @@ struct config_values
     size_t              max_body_size_ = 1 << 20;
     size_t              max_connections_ = 0;
     size_t              max_cache_entries_ = 0;
+    unsigned int        cache_ttl_seconds_ = 30;
 };
 ```
 
@@ -48,7 +49,7 @@ struct config_values
   2. 调用 **`apply_json_config`** 加载 JSON 文件配置
   3. 调用 **`apply_command_line`** 以命令行参数覆盖
 
-提供针对 **`config_values`** 结构体中各个数据成员的 getter 方法（`address()`、`port()`、`doc_root()`、`log_file()`、`log_level()`、`threads()`、`timeout_seconds()`、`max_body_size()`、`max_connections()`、`max_cache_entries()`）。
+提供针对 **`config_values`** 结构体中各个数据成员的 getter 方法（`address()`、`port()`、`doc_root()`、`log_file()`、`log_level()`、`threads()`、`timeout_seconds()`、`max_body_size()`、`max_connections()`、`max_cache_entries()`、`cache_ttl_seconds()`）。
 
 ## JSON配置文件
 
@@ -67,7 +68,8 @@ struct config_values
     "log_file":"./logs/http_server.log",
     "log_level":"debug",
     "max_connections":10000,
-    "max_cache_entries":64
+    "max_cache_entries":64,
+    "cache_ttl_seconds":30
 }
 ```
 
@@ -86,6 +88,7 @@ struct config_values
   -b [ --max_body_size ] arg   Maximum body size
   -n [ --max_connections ] arg    Maximum concurrent connections
   -e [ --max_cache_entries ] arg  Maximum LRU cache entries (0 = disabled)
+  -T [ --cache_ttl_seconds ] arg Cache entry TTL in seconds (expiry requires re-read)
 ```
 
 ## 优先级

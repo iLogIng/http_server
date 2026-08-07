@@ -67,7 +67,8 @@
     "timeout_seconds":30,
     "max_body_size":10485760,
     "max_connections":10000,
-    "max_cache_entries":64
+    "max_cache_entries":64,
+    "cache_ttl_seconds":30
 }
 ```
 
