@@ -26,6 +26,18 @@
 - **mime_type(beast::string_view path)** 方法
   - 提供将文件扩展名与相应mime类型的映射，使用 ***mime_types*** 变量进行处理
 
+- **target_path(beast::string_view target)**
+  - 剥离 target 的 query/fragment（`?`/`#`），返回纯路径部分
+  - 路由匹配与静态文件解析共用，修复 `?x=1` 404 问题
+
+- **url_decode(beast::string_view s, std::string& out)**
+  - URL 解码（RFC 3986 §2.1）：`%XX` 转义、`+` -> 空格
+  - 截断的 `%` 或非法十六进制返回 `false`，调用方回退原文
+
+- **parse_urlencoded(beast::string_view body, std::unordered_map<std::string, std::string>& out)**
+  - 解析 `application/x-www-form-urlencoded` 请求体为键值表
+  - 按 `&` 分段、`=` 切分，键值均经 url_decode；无 `=` 段键值为空串；空段跳过
+
 - **is_safe_path(beast::string_view path)**
   - 防止路径遍历攻击，确保请求路径的安全性
 

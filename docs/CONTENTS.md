@@ -23,6 +23,7 @@
 |:---|:---|:---|
 |[router](./router.md)|路由分发 — 精确匹配 + 前缀匹配|`router.hpp`|
 |[static_file_service](./static_file_service.md)|静态文件服务 — GET/HEAD 请求的文件响应|`static_file_service.hpp`|
+|[dynamic_api_service](./dynamic_api_service.md)|动态 API 服务 — 端点注册表，OPTIONS 全局支持|`dynamic_api_service.hpp`|
 |[request_handler](./request_handler.md)|请求处理 — 整合路由与静态文件服务|`request_handler.hpp`|
 
 ## 服务器核心层 (Server Core)
