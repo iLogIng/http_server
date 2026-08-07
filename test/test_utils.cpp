@@ -33,6 +33,30 @@ TEST(UtilsMimeTypeTest, NoExtension)
 }
 
 // ============================================================
+// target_path — query/fragment 剥离
+// ============================================================
+
+TEST(UtilsTargetPathTest, NoQueryReturnsAsIs)
+{
+    EXPECT_EQ(target_path("/index.html"), "/index.html");
+    EXPECT_EQ(target_path("/"), "/");
+    EXPECT_EQ(target_path("/api/hello"), "/api/hello");
+}
+
+TEST(UtilsTargetPathTest, QueryStripped)
+{
+    EXPECT_EQ(target_path("/index.html?x=1"), "/index.html");
+    EXPECT_EQ(target_path("/api/hello?a=1&b=2"), "/api/hello");
+    EXPECT_EQ(target_path("/?page=2"), "/");
+}
+
+TEST(UtilsTargetPathTest, FragmentStripped)
+{
+    EXPECT_EQ(target_path("/index.html#section"), "/index.html");
+    EXPECT_EQ(target_path("/index.html?x=1#frag"), "/index.html");
+}
+
+// ============================================================
 // is_safe_path
 // ============================================================
 

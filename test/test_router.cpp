@@ -60,6 +60,43 @@ TEST(RouterExactRouteTest, NoMatchWrongPath)
     EXPECT_FALSE(h);
 }
 
+TEST(RouterExactRouteTest, QueryStringStrippedBeforeMatch)
+{
+    router r;
+    bool called = false;
+
+    r.add_exact_route(http::verb::get, "/api/hello",
+        [&](const auto&) -> http::message_generator {
+            called = true;
+            http::response<http::string_body> res{http::status::ok, 11};
+            return res;
+        });
+
+    // 带 query 的请求仍应匹配纯路径路由
+    auto h = r.match(make_req(http::verb::get, "/api/hello?x=1&y=2"));
+    ASSERT_TRUE(h);
+    h(make_req(http::verb::get, "/api/hello?x=1&y=2"));
+    EXPECT_TRUE(called);
+
+    // 带 fragment 同样剥离
+    EXPECT_TRUE(r.match(make_req(http::verb::get, "/api/hello#frag")));
+}
+
+TEST(RouterPrefixRouteTest, QueryStringStrippedForPrefixMatch)
+{
+    router r;
+    r.add_prefix_route(http::verb::get, "/static/",
+        [](const auto&) -> http::message_generator {
+            http::response<http::string_body> res{http::status::ok, 11};
+            return res;
+        });
+
+    // query 不影响前缀匹配
+    EXPECT_TRUE(r.match(make_req(http::verb::get, "/static/css/style.css?v=1")));
+    // 边界检查仍生效（query 剥离后按纯路径判断）
+    EXPECT_FALSE(r.match(make_req(http::verb::get, "/staticx?a=1")));
+}
+
 TEST(RouterExactRouteTest, HeadMethodNotSharedWithGet)
 {
     router r;

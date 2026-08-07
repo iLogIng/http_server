@@ -363,6 +363,31 @@ TEST_F(IntegrationTest, GetApiHelloEndpoint)
     EXPECT_EQ(res.body(), R"({"message":"Hello"})");
 }
 
+TEST_F(IntegrationTest, GetApiHelloWithQueryString)
+{
+    // query 剥离后应匹配 /api/hello 精确路由
+    auto res = send_request(http::verb::get, "/api/hello?name=world&lang=zh");
+    EXPECT_EQ(res.result(), http::status::ok);
+    EXPECT_EQ(res.body(), R"({"message":"Hello"})");
+}
+
+TEST_F(IntegrationTest, GetFileWithQueryStringReturns200)
+{
+    // 静态文件请求带 query 不再 404
+    auto res = send_request(http::verb::get, "/index.html?v=1");
+    EXPECT_EQ(res.result(), http::status::ok);
+    EXPECT_EQ(res[http::field::content_type], "text/html");
+    EXPECT_FALSE(res.body().empty());
+}
+
+TEST_F(IntegrationTest, GetDirectoryWithQueryStringResolvesToIndexHtml)
+{
+    auto res = send_request(http::verb::get, "/docs/?page=2");
+    EXPECT_EQ(res.result(), http::status::ok);
+    EXPECT_EQ(res[http::field::content_type], "text/html");
+    EXPECT_FALSE(res.body().empty());
+}
+
 TEST_F(IntegrationTest, HeadRequestReturnsNoBody)
 {
     auto res = send_request(http::verb::head, "/index.html");

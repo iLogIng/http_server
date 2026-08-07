@@ -39,7 +39,10 @@ target_include_directories(test_utils PRIVATE
 gtest_discover_tests(test_utils)
 
 # ---- router test ----
-add_executable(test_router test_router.cpp ${PROJECT_SOURCE_DIR}/src/router.cpp)
+add_executable(test_router test_router.cpp
+    ${PROJECT_SOURCE_DIR}/src/router.cpp
+    ${PROJECT_SOURCE_DIR}/src/utils.cpp
+)
 target_link_libraries(test_router PRIVATE
     project_warnings
     project_defs
