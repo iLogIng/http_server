@@ -3,6 +3,7 @@
 #include <string>
 #include <ctime>
 #include <unordered_map>
+#include <zlib.h>
 
 namespace fs = boost::filesystem;
 
@@ -278,6 +279,54 @@ parse_urlencoded(beast::string_view body, std::unordered_map<std::string, std::s
         if (amp == beast::string_view::npos) break;
         pos = amp + 1;
     }
+}
+
+// 判断 MIME 是否为可压缩文本：text/* + JSON/JS/XML/SVG
+bool
+server_utils::
+should_compress(beast::string_view mime)
+{
+    if (mime.size() >= 5 && mime.substr(0, 5) == "text/") {
+        return true;
+    }
+    return mime == "application/json"
+        || mime == "application/javascript"
+        || mime == "application/xml"
+        || mime == "image/svg+xml";
+}
+
+// gzip 压缩：deflate + gzip 头尾（windowBits = 15 + 16）
+// 空输入或压缩失败返回 false
+bool
+server_utils::
+gzip_compress(beast::string_view input, std::string& out)
+{
+    if (input.empty()) {
+        out.clear();
+        return false;
+    }
+
+    z_stream strm{};
+    if (deflateInit2(&strm, Z_DEFAULT_COMPRESSION, Z_DEFLATED,
+            15 + 16, 8, Z_DEFAULT_STRATEGY) != Z_OK) {
+        return false;
+    }
+
+    // deflateBound 预分配，避免压缩过程中扩容
+    out.resize(deflateBound(&strm, input.size()));
+    strm.next_in = reinterpret_cast<Bytef*>(const_cast<char*>(input.data()));
+    strm.avail_in = static_cast<uInt>(input.size());
+    strm.next_out = reinterpret_cast<Bytef*>(out.data());
+    strm.avail_out = static_cast<uInt>(out.size());
+
+    int ret = deflate(&strm, Z_FINISH);
+    if (ret != Z_STREAM_END) {
+        deflateEnd(&strm);
+        return false;
+    }
+    out.resize(out.size() - strm.avail_out);
+    deflateEnd(&strm);
+    return true;
 }
 
 // 防止路径穿越

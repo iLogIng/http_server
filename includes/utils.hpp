@@ -40,18 +40,23 @@ parse_range_header(beast::string_view value, std::vector<byte_range>& out_range)
 beast::string_view
 mime_type(beast::string_view path);
 
-// 剥离 target 的 query/fragment，返回纯路径部分
-// (如 /index.html?x=1 -> /index.html)
+// 剥离 target 的 query/fragment，如 /index.html?x=1 -> /index.html
 beast::string_view
 target_path(beast::string_view target);
 
-// URL 解码（%XX、'+' -> 空格），解码失败返回 false
+// URL 解码（%XX、'+' -> 空格），非法输入返回 false
 bool
 url_decode(beast::string_view s, std::string& out);
 
 // 解析 form-urlencoded 请求体为键值表
 void
 parse_urlencoded(beast::string_view body, std::unordered_map<std::string, std::string>& out);
+
+// 判断 MIME 是否为可压缩文本
+bool should_compress(beast::string_view mime);
+
+// gzip 压缩到 out，失败返回 false
+bool gzip_compress(beast::string_view input, std::string& out);
 
 bool
 is_safe_path(beast::string_view path);
