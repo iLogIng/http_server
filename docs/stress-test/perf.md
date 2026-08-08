@@ -22,7 +22,7 @@ wrk -t6 -c400 -d30s http://127.0.0.1:8080/index.html
 
 ### 对比数据
 
-> http_server 三档：默认 / `-L warning` / A1+`-L warning`。锁频下绝对值跨会话不可比，同会话内两服务同频率，比率有效
+> http_server 三档：默认 / `-L warning` / A1+`-L warning`。锁频下不同轮次绝对值不可比，同一轮内两服务同频率，比率有效
 
 | 并发 | 默认 | `-L warning` | A1+`-L warning` | nginx | 最高比率 |
 |:---:|:---:|:---:|:---:|:---:|:---:|
@@ -84,7 +84,8 @@ wrk -t6 -c400 -d30s http://127.0.0.1:8080/index.html
 
 - 已实现：warm 避免 statx、缓存零拷贝、缓存 key 免分配、访问日志可关、ETag/304
 - 最大单项收益：免 statx（c100 +28% / c400 +38%）
-- 实测：隔离测试约 nginx 的 60%，与 Node cluster 同级
+- 实测：qps/MHz 归一化约为 nginx 的 **71~75%**（上表为早期同轮绝对比率，受锁频/同机抢占系统性低估；跨轮次对比按 qps/MHz 归一化）
+- 最新矩阵压测：`stress-test-record/stress_test_2026_08_07.md`（t4/t6/t8 × c100~c1000，峰值 ~153k QPS）
 - 未做项按需推进（见 B/C）
 
 -----

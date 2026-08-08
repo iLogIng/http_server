@@ -151,12 +151,13 @@ wrk -t6 -c100 -d30s http://127.0.0.1:8080/index.html
 wrk -t6 -c400 -d30s http://127.0.0.1:8080/index.html
 ```
 
-| 并发 | http_server | nginx | 比率 |
-|:---:|:---:|:---:|:---:|
-| c100 | ~194k | ~309k | ~62% |
-| c400 | ~157k | ~283k | ~56% |
+| 并发 | http_server |
+|:---:|:---:|
+| c100 | ~153k |
+| c400 | ~138k |
 
-> nginx 对照组：root 指向同一 `./app/`，access_log off
+> 18 组矩阵（t4/t6/t8 × c100\~c1000）：[stress_test_2026_08_07](./docs/stress-test/stress-test-record/stress_test_2026_08_07.md)
+> nginx 对比：qps/MHz 归一化约为 nginx 的 **67\~73%**（锁频平台不同轮次绝对值不可比，按同频率口径换算）
 
 -----
 

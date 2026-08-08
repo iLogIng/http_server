@@ -3,6 +3,8 @@
 > 该压力测试基于 **wrk** 工具
 > ***[wrk tool](https://github.com/wg/wrk)***
 
+> 最新压测以 [stress-test-record/stress_test_2026_08_07.md](./stress-test-record/stress_test_2026_08_07.md) 为准（kernel 7.1.6，峰值 ~153k QPS）
+
 使用示例
 
 ```bash
